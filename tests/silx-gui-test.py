@@ -1,4 +1,4 @@
-import numpy
+
 from skimage import io
 from silx.gui import qt
 from skimage import io
