@@ -16,6 +16,7 @@ from silx.gui.plot.tools.CurveLegendsWidget import CurveLegendsWidget
 from PyQt5 import QtWidgets
 from silx.gui.plot.tools.CurveLegendsWidget import CurveLegendsWidget
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
+from PyQt5.QtWidgets import QMessageBox
 
 import importlib
 a=importlib.import_module('files.docklegend')
@@ -101,6 +102,9 @@ class MyPlotWindow(qt.QMainWindow):
         tools1d=qt.QLabel('1d Tools')
         tools1d.setStyleSheet("border: 1px solid black;")
         layout3.addWidget(tools1d)
+        subtracttbut=qt.QPushButton('subtract',self)
+        layout3.addWidget(subtracttbut)
+        subtracttbut.clicked.connect(self.subtractcurves)
 
         #Loaded Directory name
         frame = qt.QLabel(self)
@@ -214,6 +218,26 @@ class MyPlotWindow(qt.QMainWindow):
             name=curve.split('.')[0]
             res=datadict[name]
             plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name))
+
+    def subtractcurves(self):
+        loadedlist = self.loadedlistwidget
+        plot = self.getPlotWidget()
+        datadict = self.idata
+        curvelist = [item.text() for item in loadedlist.selectedItems()]
+        if len(curvelist)==2:
+            name1 = curvelist[0].split('.')[0]
+            name2=curvelist[1].split('.')[0]
+            res1 = datadict[name1]
+            res2=datadict[name2]
+            res3_intensity=abs(numpy.subtract(res1.intensity,res2.intensity))
+            plot.addCurve(x=res1.radial,y=res3_intensity,legend='{}'.format(name1+'-'+name2))
+
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Error")
+            msg.setText("Please select only 2 curves to subtract")
+            x = msg.exec_()
+
 
 
 
