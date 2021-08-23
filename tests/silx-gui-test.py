@@ -1,23 +1,18 @@
 import numpy
 from silx.gui import qt
 from skimage import io
-
 from silx.gui.plot.PlotWindow import PlotWindow
 from os import listdir
 from os.path import isfile, join
 from silx.gui import colors
-from silx.gui.plot import Plot2D,Plot1D
 import pyFAI, fabio
 import subprocess
 from PIL import Image, ImageOps
 import PIL
 from silx.gui.plot import tools
-from silx.gui.plot.tools.CurveLegendsWidget import CurveLegendsWidget
 from PyQt5 import QtWidgets
-from silx.gui.plot.tools.CurveLegendsWidget import CurveLegendsWidget
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
 from PyQt5.QtWidgets import QMessageBox
-
 import importlib
 a=importlib.import_module('files.docklegend')
 MyCurveLegendsWidget=a.MyCurveLegendsWidget
