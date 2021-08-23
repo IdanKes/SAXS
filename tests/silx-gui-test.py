@@ -62,10 +62,19 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(listwidget)
         self.listwidget=listwidget
         listwidget.itemSelectionChanged.connect(self.ShowImage)
+
+        #integration paramteres
         integparams = qt.QGroupBox('Integration Parameters')
         sublayout=qt.QFormLayout(integparams)
         bins=qt.QLineEdit('1000')
+        self.bins=bins
+        minradius=qt.QLineEdit('0')
+        self.minradius=minradius
+        maxradius = qt.QLineEdit('10')
+        self.maxradius = maxradius
         sublayout.addRow('Bins:',bins)
+        sublayout.addRow('Min Radius:', minradius)
+        sublayout.addRow('Max Radius:', maxradius)
         layout.addWidget(integparams)
         button = qt.QPushButton("Integrate", self)
         button.clicked.connect(self.Integrate)
@@ -154,32 +163,42 @@ class MyPlotWindow(qt.QMainWindow):
         subprocess.run(["pyFAI-calib2"])
 
     def Integrate(self):
+        bins=int(self.bins.text())
+        minradius=int(self.minradius.text())
+        maxradius=int(self.maxradius.text())
         plot = self.getPlotWidget()
         listwidget = self.listwidget
         loadedlist=self.loadedlistwidget
         datadict=self.idata
-        img = fabio.open('new images/{}'.format(listwidget.selectedItems()[0].text()))
-        cur_item=listwidget.selectedItems()[0].text()
-        itemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
-        if cur_item not in itemsTextList:
-            loadedlist.addItem(cur_item)
-        ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
-        img_array = img.data
-        mask = fabio.open('new images/msk_waxs.msk')
-        filename=listwidget.selectedItems()[0].text().split('.')[0]
-        res = ai.integrate1d_ng(img_array,
-                                4000,
-                                mask=mask.data,
-                                unit="q_nm^-1",
-                                filename="new images/tests/{}.dat".format(filename),
-                                error_model='poisson',
-                                radial_range=(0,10))
-        datadict[filename]=res
-        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename))
-        plot.setGraphYLabel('Intensity')
-        plot.setGraphXLabel('Scattering vector (nm-1)')
-        plot.setYAxisLogarithmic(True)
-        plot.resetZoom()
+        imagelist = [item.text() for item in listwidget.selectedItems()]
+        if len(imagelist)==0:
+            msg = QMessageBox()
+            msg.setWindowTitle("Error")
+            msg.setText("Please Select an Image to Integrate")
+            x = msg.exec_()
+        else:
+            img = fabio.open('new images/{}'.format(listwidget.selectedItems()[0].text()))
+            cur_item=listwidget.selectedItems()[0].text()
+            itemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
+            if cur_item not in itemsTextList:
+                loadedlist.addItem(cur_item)
+            ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
+            img_array = img.data
+            mask = fabio.open('new images/msk_waxs.msk')
+            filename=listwidget.selectedItems()[0].text().split('.')[0]
+            res = ai.integrate1d_ng(img_array,
+                                    bins,
+                                    mask=mask.data,
+                                    unit="q_nm^-1",
+                                    filename="new images/tests/{}.dat".format(filename),
+                                    error_model='poisson',
+                                    radial_range=(minradius,maxradius))
+            datadict[filename]=res
+            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename))
+            plot.setGraphYLabel('Intensity')
+            plot.setGraphXLabel('Scattering vector (nm-1)')
+            plot.setYAxisLogarithmic(True)
+            #plot.resetZoom()
 
     def open(self):
         listwidget=self.listwidget
