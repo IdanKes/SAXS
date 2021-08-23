@@ -1,16 +1,8 @@
 import numpy
-from skimage import io
 from silx.gui import qt
 from skimage import io
-from silx.gui.plot import PlotWidget
-from silx.gui.plot.tools.profile import toolbar
-from silx.gui.plot import tools   # QToolbars to use with PlotWidget
-from silx.gui.plot import actions  # QAction to use with PlotWidget
-from silx.gui.plot import PlotToolButtons  # QToolButton to use with PlotWidget
-from silx.gui.plot.ColorBar import ColorBarWidget
-from silx.gui.plot.PlotTools import PositionInfo
+
 from silx.gui.plot.PlotWindow import PlotWindow
-import os
 from os import listdir
 from os.path import isfile, join
 from silx.gui import colors
@@ -19,7 +11,15 @@ import pyFAI, fabio
 import subprocess
 from PIL import Image, ImageOps
 import PIL
+from silx.gui.plot import tools
 from silx.gui.plot.tools.CurveLegendsWidget import CurveLegendsWidget
+from PyQt5 import QtWidgets
+from silx.gui.plot.tools.CurveLegendsWidget import CurveLegendsWidget
+from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
+
+import importlib
+a=importlib.import_module('files.docklegend')
+MyCurveLegendsWidget=a.MyCurveLegendsWidget
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -29,11 +29,23 @@ class MyPlotWindow(qt.QMainWindow):
 
         # Create a PlotWidget
         self._plot = PlotWindow(parent=self)
-        #self._plot=Plot2D(parent=self)
 
+        #Bottom Toolbar
+        position = tools.PositionInfo(plot=self._plot,
+                                      converters=[('Radius', lambda x, y: numpy.sqrt(x * x + y * y)),
+                                                  ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y, x))),
+                                                  ('X Position', lambda x,y: x),
+                                                  ('Y Position', lambda x,y: y)])
+        toolBar = qt.QToolBar("xy", self)
+        self.addToolBar(qt.Qt.BottomToolBarArea,toolBar)
+        toolBar.addWidget(position)
+
+        #window
         self.setWindowTitle("Saxii")
         icon=qt.QIcon('icon.png')
         self.setWindowIcon(icon)
+
+        #layout
         options = qt.QWidget(self)
         layout = qt.QVBoxLayout(options)
         button = qt.QPushButton("Calibration Tool", self)
@@ -49,7 +61,6 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(listwidget)
         self.listwidget=listwidget
         listwidget.itemSelectionChanged.connect(self.ShowImage)
-
         integparams = qt.QGroupBox('Integration Parameters')
         sublayout=qt.QFormLayout(integparams)
         bins=qt.QLineEdit('1000')
@@ -58,7 +69,11 @@ class MyPlotWindow(qt.QMainWindow):
         button = qt.QPushButton("Integrate", self)
         button.clicked.connect(self.Integrate)
         layout.addWidget(button)
+
         layout.addStretch()
+
+        #Integration Data dict
+        self.idata={}
 
         #Data Fields
         ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
@@ -68,9 +83,6 @@ class MyPlotWindow(qt.QMainWindow):
         layout2=qt.QFormLayout(options2)
         wavelength=qt.QLineEdit()
         distance=qt.QLineEdit()
-        # paramheader=qt.QLabel('Calibration Data')
-        # paramheader.setStyleSheet("background-color: yellow; border: 1px solid black;")
-        # layout2.addWidget(paramheader)
         layout2.addRow('Distance:',distance)
         distance.setText(str(data_dict['dist']))
         layout2.addRow('Wave Length:',wavelength)
@@ -83,6 +95,9 @@ class MyPlotWindow(qt.QMainWindow):
         loadedlistwidget = qt.QListWidget(self)
         layout3.addWidget(loadedlistwidget)
         self.loadedlistwidget=loadedlistwidget
+        loadedlistwidget.itemSelectionChanged.connect(self.PlotMulCurves)
+        loadedlistwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+
         tools1d=qt.QLabel('1d Tools')
         tools1d.setStyleSheet("border: 1px solid black;")
         layout3.addWidget(tools1d)
@@ -109,6 +124,15 @@ class MyPlotWindow(qt.QMainWindow):
         centralWidget.setLayout(gridLayout)
         self.setCentralWidget(centralWidget)
 
+        # legend dock
+        plot = self._plot
+        curveLegendsWidget = MyCurveLegendsWidget()
+        curveLegendsWidget.setPlotWidget(plot)
+        dock = BoxLayoutDockWidget()
+        dock.setWindowTitle('Curve legends')
+        dock.setWidget(curveLegendsWidget)
+        plot.addDockWidget(qt.Qt.TopDockWidgetArea, dock)
+
     def getPlotWidget(self):
         """"Returns the PlotWidget object """""
         return self._plot
@@ -129,8 +153,12 @@ class MyPlotWindow(qt.QMainWindow):
         plot = self.getPlotWidget()
         listwidget = self.listwidget
         loadedlist=self.loadedlistwidget
+        datadict=self.idata
         img = fabio.open('new images/{}'.format(listwidget.selectedItems()[0].text()))
-        loadedlist.addItem(listwidget.selectedItems()[0].text())
+        cur_item=listwidget.selectedItems()[0].text()
+        itemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
+        if cur_item not in itemsTextList:
+            loadedlist.addItem(cur_item)
         ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
         img_array = img.data
         mask = fabio.open('new images/msk_waxs.msk')
@@ -142,13 +170,11 @@ class MyPlotWindow(qt.QMainWindow):
                                 filename="new images/tests/{}.dat".format(filename),
                                 error_model='poisson',
                                 radial_range=(0,10))
-
+        datadict[filename]=res
         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename))
         plot.setGraphYLabel('Intensity')
         plot.setGraphXLabel('Scattering vector (nm-1)')
         plot.setYAxisLogarithmic(True)
-
-
         plot.resetZoom()
 
     def open(self):
@@ -177,6 +203,19 @@ class MyPlotWindow(qt.QMainWindow):
         plot.setYAxisLogarithmic(False)
         plot.addImage(image)
         plot.resetZoom()
+
+    def PlotMulCurves(self):
+        loadedlist = self.loadedlistwidget
+        plot = self.getPlotWidget()
+        datadict=self.idata
+        curvelist = [item.text() for item in loadedlist.selectedItems()]
+        plot.clear()
+        for curve in curvelist:
+            name=curve.split('.')[0]
+            res=datadict[name]
+            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name))
+
+
 
 def main():
     global app
