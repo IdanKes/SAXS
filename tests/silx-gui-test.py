@@ -193,6 +193,8 @@ class MyPlotWindow(qt.QMainWindow):
             plot.setGraphYLabel('Intensity')
             plot.setGraphXLabel('Scattering vector (nm-1)')
             plot.setYAxisLogarithmic(True)
+            plot.setKeepDataAspectRatio(False)
+
             #plot.resetZoom()
 
     def open(self):
@@ -220,18 +222,28 @@ class MyPlotWindow(qt.QMainWindow):
         plot.setDefaultColormap(cm)
         plot.setYAxisLogarithmic(False)
         plot.addImage(image)
+        plot.setKeepDataAspectRatio(True)
         plot.resetZoom()
 
     def PlotMulCurves(self):
+        def colorbank():
+            bank=['blue','red','black','green']
+            i=0
+            while True:
+                yield bank[i]
+                i+=1
+                i=i%len(bank)
         loadedlist = self.loadedlistwidget
         plot = self.getPlotWidget()
         datadict=self.idata
         curvelist = [item.text() for item in loadedlist.selectedItems()]
         plot.clear()
+        a = colorbank()
         for curve in curvelist:
             name=curve.split('.')[0]
             res=datadict[name]
-            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name))
+            color=next(a)
+            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name),color=color,linewidth=4)
 
     def subtractcurves(self):
         loadedlist = self.loadedlistwidget
