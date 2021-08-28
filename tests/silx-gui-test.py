@@ -189,12 +189,13 @@ class MyPlotWindow(qt.QMainWindow):
                                     error_model='poisson',
                                     radial_range=(minradius,maxradius))
             datadict[filename]=res
-            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename))
+            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),linewidth=3)
             plot.setGraphYLabel('Intensity')
             plot.setGraphXLabel('Scattering vector (nm-1)')
             plot.setYAxisLogarithmic(True)
             plot.setKeepDataAspectRatio(False)
-
+            plot.setAxesDisplayed(True)
+            plot.setGraphGrid(which='both')
             #plot.resetZoom()
 
     def open(self):
@@ -243,7 +244,7 @@ class MyPlotWindow(qt.QMainWindow):
             name=curve.split('.')[0]
             res=datadict[name]
             color=next(a)
-            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name),color=color,linewidth=4)
+            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name),color=color,linewidth=3)
 
     def subtractcurves(self):
         loadedlist = self.loadedlistwidget
@@ -256,15 +257,14 @@ class MyPlotWindow(qt.QMainWindow):
             res1 = datadict[name1]
             res2=datadict[name2]
             res3_intensity=abs(numpy.subtract(res1.intensity,res2.intensity))
-            plot.addCurve(x=res1.radial,y=res3_intensity,legend='{}'.format(name1+'-'+name2))
+            plot.addCurve(x=res1.radial,y=res3_intensity,legend='{}'.format(name1+' MINUS '+name2))
+            plot.setGraphGrid(which='both')
 
         else:
             msg = QMessageBox()
             msg.setWindowTitle("Error")
             msg.setText("Please select only 2 curves to subtract")
             x = msg.exec_()
-
-
 
 
 def main():
