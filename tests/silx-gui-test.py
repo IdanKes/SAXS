@@ -25,6 +25,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         # Create a PlotWidget
         self._plot = PlotWindow(parent=self)
+        a=qt.QSize(10,10)
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
@@ -47,9 +48,6 @@ class MyPlotWindow(qt.QMainWindow):
         button = qt.QPushButton("Calibration Tool", self)
         button.clicked.connect(self.InitiateCalibration)
         layout.addWidget(button)
-        # button = qt.QPushButton("Show Image", self)
-        # button.clicked.connect(self.ShowImage)
-        # layout.addWidget(button)
         button = qt.QPushButton("Load Folder", self)
         button.clicked.connect(self.open)
         layout.addWidget(button)
@@ -72,9 +70,6 @@ class MyPlotWindow(qt.QMainWindow):
         sublayout.addRow('Min Radius:', minradius)
         sublayout.addRow('Max Radius:', maxradius)
         layout.addWidget(integparams)
-        #button = qt.QPushButton("Integrate", self)
-        #button.clicked.connect(self.Integrate)
-        #layout.addWidget(button)
         buttonsWidget = qt.QWidget()
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
         buttons = ['Integrate Selected','Integrate All']
@@ -163,33 +158,48 @@ class MyPlotWindow(qt.QMainWindow):
         im_mirror = PIL.ImageOps.mirror(im)
         plot.addImage(im_mirror)
 
+    def curve_plot(self,plot):
+        plot.clear()
+        plot.setGraphYLabel('Intensity')
+        plot.setGraphXLabel('Scattering vector (nm^-1)')
+        plot.setYAxisLogarithmic(True)
+        plot.setKeepDataAspectRatio(False)
+        plot.setAxesDisplayed(True)
+        plot.setGraphGrid(which='both')
+
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])
 
-    def full_integration(self,image,datadict,bins=1000,min_radius=0,max_radius=10):
-        ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
+    def full_integration(self,image,mask,poni,bins,minradius,maxradius,datadict):
         img = fabio.open('new images/{}'.format(image))
+        ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
+        filename=image.split('.')[0]
         img_array = img.data
-        mask = fabio.open('new images/msk_waxs.msk')
-        filename = image
+        print(bins,filename,minradius,maxradius)
         res = ai.integrate1d_ng(img_array,
                                 bins,
-                                mask=mask.data,
+                                mask=mask,
                                 unit="q_nm^-1",
                                 filename="new images/tests/{}.dat".format(filename),
                                 error_model='poisson',
-                                radial_range=(min_radius, max_radius))
+                                radial_range=(minradius, maxradius))
         datadict[filename] = res
 
     def Integrate(self):
         bins=int(self.bins.text())
         minradius=int(self.minradius.text())
         maxradius=int(self.maxradius.text())
+        poni = None
+        mask = fabio.open('new images/msk_waxs.msk')
+
         plot = self.getPlotWidget()
+        self.curve_plot(plot)
+
         listwidget = self.listwidget
-        loadedlist=self.loadedlistwidget
         datadict=self.idata
         imagelist = [item.text() for item in listwidget.selectedItems()]
+        loadedlist = self.loadedlistwidget
+        loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
         if len(imagelist)==0:
             msg = QMessageBox()
             msg.setWindowTitle("Error")
@@ -197,40 +207,46 @@ class MyPlotWindow(qt.QMainWindow):
             x = msg.exec_()
         else:
             for image in imagelist:
-                img = fabio.open('new images/{}'.format(image))
-                itemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
-                if image not in itemsTextList:
-                    loadedlist.addItem(image)
-                ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
-                img_array = img.data
-                mask = fabio.open('new images/msk_waxs.msk')
-                filename=image.split('.')[0]
-                res = ai.integrate1d_ng(img_array,
-                                        bins,
-                                        mask=mask.data,
-                                        unit="q_nm^-1",
-                                        filename="new images/tests/{}.dat".format(filename),
-                                        error_model='poisson',
-                                        radial_range=(minradius,maxradius))
-                datadict[filename]=res
-                #self.full_integration(self, image, datadict, bins=bins, min_radius=minradius, max_radius=maxradius)
-            # for item in datadict.items():
-            #     filename=item[0]
-            #     res=item[1]
+                if image not in loadeditemsTextList:
+                 loadedlist.addItem(image)
+                self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                      maxradius=maxradius, datadict=datadict)
+            for item in datadict.items():
+                filename = item[0]
+                res = item[1]
                 plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),linewidth=2)
 
-            plot.setGraphYLabel('Intensity')
-            plot.setGraphXLabel('Scattering vector (nm^-1)')
-            plot.setYAxisLogarithmic(True)
-            plot.setKeepDataAspectRatio(False)
-            plot.setAxesDisplayed(True)
-            plot.setGraphGrid(which='both')
 
     def Integrate_all(self):
+        bins = int(self.bins.text())
+        minradius = int(self.minradius.text())
+        maxradius = int(self.maxradius.text())
+        poni = None
+        mask = fabio.open('new images/msk_waxs.msk')
+
+        datadict = self.idata
         listwidget = self.listwidget
-        imagelist =  [str(listwidget.item(i).text()) for i in range(listwidget.count())]
-        for image in imagelist:
-           print(image)
+        loadedlist = self.loadedlistwidget
+        loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
+
+        if listwidget.count()==0:
+            msg = QMessageBox()
+            msg.setWindowTitle("Error")
+            msg.setText("No Images to Integrate")
+            x = msg.exec_()
+        else:
+            plot = self.getPlotWidget()
+            self.curve_plot(plot)
+
+            imagelist=[str(listwidget.item(i).text()) for i in range(listwidget.count())]
+            for image in imagelist:
+                if image not in loadeditemsTextList:
+                    loadedlist.addItem(image)
+                self.full_integration(image=image,poni=poni,mask=mask.data,bins=bins,minradius=minradius,maxradius=maxradius,datadict=datadict)
+            for item in datadict.items():
+                name=item[0]
+                res=item[1]
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name), linewidth=2)
 
     def open(self):
         listwidget=self.listwidget
@@ -246,17 +262,16 @@ class MyPlotWindow(qt.QMainWindow):
         except FileNotFoundError:
             pass
 
-
     def ShowImage(self):
         listwidget = self.listwidget
         plot = self.getPlotWidget()
+        plot.clear()
 
         if listwidget.selectedItems()==[]:
             msg = QMessageBox()
             msg.setWindowTitle("Error")
             msg.setText("Please Select an Image")
             x = msg.exec_()
-
         else:
             mypath = 'new images/' + str(listwidget.selectedItems()[0].text())
             plot.getDefaultColormap().setName('jet')
@@ -266,9 +281,8 @@ class MyPlotWindow(qt.QMainWindow):
             plot.setKeepDataAspectRatio(True)
             plot.setGraphGrid(which=None)
             image = io.imread(mypath)
-            plot.addImage(image)
-
-        plot.resetZoom()
+            plot.addImage(image,resetzoom=True)
+            plot.resetZoom()
 
     def PlotMulCurves(self):
         def colorbank():
@@ -280,10 +294,11 @@ class MyPlotWindow(qt.QMainWindow):
                 i=i%len(bank)
         loadedlist = self.loadedlistwidget
         plot = self.getPlotWidget()
+        plot.clear()
+        self.curve_plot(plot)
         datadict=self.idata
         curvelist = [item.text() for item in loadedlist.selectedItems()]
         curvenames=[item.split('.')[0] for item in curvelist]
-        plot.clear()
         a = colorbank()
         for curve in curvenames:
             name=curve
