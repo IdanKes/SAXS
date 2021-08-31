@@ -48,7 +48,7 @@ class MyPlotWindow(qt.QMainWindow):
         button = qt.QPushButton("Calibration Tool", self)
         button.clicked.connect(self.InitiateCalibration)
         layout.addWidget(button)
-        button = qt.QPushButton("Load Folder", self)
+        button = qt.QPushButton("Load Image Folder", self)
         button.clicked.connect(self.open)
         layout.addWidget(button)
         listwidget=qt.QListWidget(self)
@@ -56,6 +56,22 @@ class MyPlotWindow(qt.QMainWindow):
         self.listwidget=listwidget
         listwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         listwidget.itemSelectionChanged.connect(self.ShowImage)
+        button = qt.QPushButton("Load PONI File", self)
+        button.clicked.connect(self.open_poni)
+        layout.addWidget(button)
+        poni_label=qt.QLabel(self)
+        poni_label.setText('No PONI')
+        self.poni_label=poni_label
+        layout.addWidget(button)
+        layout.addWidget(poni_label)
+        button = qt.QPushButton("Load Mask File", self)
+        button.clicked.connect(self.open_mask)
+        layout.addWidget(button)
+        mask_label = qt.QLabel(self)
+        mask_label.setText('No Mask')
+        self.mask_label = mask_label
+        layout.addWidget(button)
+        layout.addWidget(mask_label)
 
         #integration paramteres
         integparams = qt.QGroupBox('Integration Parameters')
@@ -85,17 +101,16 @@ class MyPlotWindow(qt.QMainWindow):
         self.idata={}
 
         #Data Fields
-        ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
-        data_dict=ai.get_config()
         options2 = qt.QGroupBox('Calibration Data')
         #layout2 = qt.QFormLayout(options2)
         layout2=qt.QFormLayout(options2)
+        self.layout2=layout2
         wavelength=qt.QLineEdit()
         distance=qt.QLineEdit()
-        layout2.addRow('Distance:',distance)
-        distance.setText(str(data_dict['dist']))
-        layout2.addRow('Wave Length:',wavelength)
-        wavelength.setText(str(data_dict['wavelength']))
+        layout2.addRow('Distance:', distance)
+        layout2.addRow('Wavelength:', wavelength)
+        self.wavelength=wavelength
+        self.distance=distance
 
         # 1D loaded Images List
         options3=qt.QWidget(self)
@@ -165,17 +180,16 @@ class MyPlotWindow(qt.QMainWindow):
         plot.setYAxisLogarithmic(True)
         plot.setKeepDataAspectRatio(False)
         plot.setAxesDisplayed(True)
-        plot.setGraphGrid(which='both')
+        #plot.setGraphGrid(which='both')
 
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])
 
     def full_integration(self,image,mask,poni,bins,minradius,maxradius,datadict):
         img = fabio.open('new images/{}'.format(image))
-        ai = pyFAI.load("PYFAI FILE/waxs_test.poni")
+        ai = pyFAI.load(poni)
         filename=image.split('.')[0]
         img_array = img.data
-        print(bins,filename,minradius,maxradius)
         res = ai.integrate1d_ng(img_array,
                                 bins,
                                 mask=mask,
@@ -189,8 +203,8 @@ class MyPlotWindow(qt.QMainWindow):
         bins=int(self.bins.text())
         minradius=int(self.minradius.text())
         maxradius=int(self.maxradius.text())
-        poni = None
-        mask = fabio.open('new images/msk_waxs.msk')
+        poni = self.poni_file
+        mask = fabio.open(self.mask_file)
 
         plot = self.getPlotWidget()
         self.curve_plot(plot)
@@ -211,18 +225,19 @@ class MyPlotWindow(qt.QMainWindow):
                  loadedlist.addItem(image)
                 self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
                                       maxradius=maxradius, datadict=datadict)
-            for item in datadict.items():
-                filename = item[0]
-                res = item[1]
+            for image in imagelist:
+                filename = image.split('.')[0]
+                res = datadict[filename]
                 plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),linewidth=2)
+
 
 
     def Integrate_all(self):
         bins = int(self.bins.text())
         minradius = int(self.minradius.text())
         maxradius = int(self.maxradius.text())
-        poni = None
-        mask = fabio.open('new images/msk_waxs.msk')
+        poni = self.poni_file
+        mask = fabio.open(self.mask_file)
 
         datadict = self.idata
         listwidget = self.listwidget
@@ -261,6 +276,25 @@ class MyPlotWindow(qt.QMainWindow):
                 listwidget.addItem(str(file))
         except FileNotFoundError:
             pass
+
+    def open_poni(self):
+        filepath = qt.QFileDialog.getOpenFileName(self,filter='*.poni')
+        self.poni_file=filepath[0]
+        self.poni_label.setText('loaded PONI file: /{}'.format(filepath[0].split("/")[-1]))
+        #self.frame.setStyleSheet("border: 0.5px solid black;")
+        self.poni_label.setFont(qt.QFont('Segoe UI',9))
+        ai = pyFAI.load(self.poni_file)
+        data_dict = ai.get_config()
+        layout2=self.layout2
+        self.distance.setText(str(data_dict['dist']))
+        self.wavelength.setText(str(data_dict['wavelength']))
+
+    def open_mask(self):
+        filepath = qt.QFileDialog.getOpenFileName(self,filter='*.msk')
+        self.mask_file=filepath[0]
+        self.mask_label.setText('loaded Mask file: /{}'.format(filepath[0].split("/")[-1]))
+        #self.frame.setStyleSheet("border: 0.5px solid black;")
+        self.mask_label.setFont(qt.QFont('Segoe UI',9))
 
     def ShowImage(self):
         listwidget = self.listwidget
@@ -318,7 +352,7 @@ class MyPlotWindow(qt.QMainWindow):
             res1 = datadict[name1]
             res2=datadict[name2]
             res3_intensity=abs(numpy.subtract(res1.intensity,res2.intensity))
-            plot.addCurve(x=res1.radial,y=res3_intensity,legend='{}'.format(name1+' MINUS '+name2),linewidth=1,color='green')
+            plot.addCurve(x=res1.radial,y=res3_intensity,legend='{}'.format(name1+' SUBTRACT '+name2),linewidth=1,color='green')
             plot.setGraphGrid(which='both')
 
         else:
