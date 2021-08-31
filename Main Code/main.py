@@ -2,7 +2,7 @@ import numpy
 from silx.gui import qt
 from skimage import io
 from silx.gui.plot.PlotWindow import PlotWindow
-from os import listdir,path
+from os import listdir
 from os.path import isfile, join
 from silx.gui import colors
 import pyFAI, fabio
@@ -10,7 +10,7 @@ import subprocess
 from PIL import Image, ImageOps
 import PIL
 from silx.gui.plot import tools
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
 from PyQt5.QtWidgets import QMessageBox
 import importlib
@@ -91,7 +91,7 @@ class MyPlotWindow(qt.QMainWindow):
         q_combobox=qt.QComboBox()
         sublayout.addRow('Radial unit:',q_combobox)
         q_combobox.addItems(['q (nm^-1)','q (A^-1)'])
-        self.q_choice=q_combobox.currentText()
+        self.q_combo=q_combobox
 
         buttonsWidget = qt.QWidget()
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
@@ -107,6 +107,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         #Integration Data dict
         self.idata={}
+        self.unitdict={'q (nm^-1)':"q_nm^-1",'q (A^-1)':"q_A^-1"}
 
         #Data Fields
         options2 = qt.QGroupBox('Calibration Data')
@@ -189,8 +190,9 @@ class MyPlotWindow(qt.QMainWindow):
 
     def curve_plot(self,plot):
         plot.clear()
+        q_choice=self.q_combo.currentText()
         plot.setGraphYLabel('Intensity')
-        plot.setGraphXLabel('Scattering vector (nm^-1)')
+        plot.setGraphXLabel('Scattering vector {}'.format(q_choice))
         plot.setYAxisLogarithmic(True)
         plot.setKeepDataAspectRatio(False)
         plot.setAxesDisplayed(True)
@@ -199,7 +201,7 @@ class MyPlotWindow(qt.QMainWindow):
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])
 
-    def full_integration(self,image,mask,poni,bins,minradius,maxradius,datadict):
+    def full_integration(self,image,mask,poni,bins,minradius,maxradius,q_choice,datadict):
         imagefolder=self.imagepath
         imagepath=imagefolder+'/'+image
         img = fabio.open(imagepath)
@@ -209,7 +211,7 @@ class MyPlotWindow(qt.QMainWindow):
         res = ai.integrate1d_ng(img_array,
                                 bins,
                                 mask=mask,
-                                unit="q_A^-1",
+                                unit=q_choice,
                                 filename="{}/{}.dat".format(imagefolder,filename),
                                 error_model='poisson',
                                 radial_range=(minradius, maxradius))
@@ -221,6 +223,9 @@ class MyPlotWindow(qt.QMainWindow):
         maxradius=int(self.maxradius.text())
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
+        q_choice = self.q_combo.currentText()
+        unit_dict=self.unitdict
+        q_choice=unit_dict[q_choice]
 
         plot = self.getPlotWidget()
         self.curve_plot(plot)
@@ -241,13 +246,11 @@ class MyPlotWindow(qt.QMainWindow):
                     loadedlist.addItem(image)
 
                 self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                      maxradius=maxradius, datadict=datadict)
+                                      maxradius=maxradius,q_choice=q_choice, datadict=datadict)
             for image in imagelist:
                 filename = image.split('.')[0]
                 res = datadict[filename]
                 plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),linewidth=2)
-
-
 
     def Integrate_all(self):
         bins = int(self.bins.text())
@@ -255,6 +258,9 @@ class MyPlotWindow(qt.QMainWindow):
         maxradius = int(self.maxradius.text())
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
+        q_choice=self.q_combo.currentText()
+        unit_dict = self.unitdict
+        q_choice = unit_dict[q_choice]
 
         datadict = self.idata
         listwidget = self.listwidget
@@ -275,7 +281,7 @@ class MyPlotWindow(qt.QMainWindow):
             for image in imagelist:
                 if image not in loadeditemsTextList:
                     loadedlist.addItem(image)
-                self.full_integration(image=image,poni=poni,mask=mask.data,bins=bins,minradius=minradius,maxradius=maxradius,datadict=datadict)
+                self.full_integration(image=image,poni=poni,mask=mask.data,bins=bins,minradius=minradius,maxradius=maxradius,q_choice=q_choice,datadict=datadict)
             for item in datadict.items():
                 name=item[0]
                 res=item[1]
@@ -330,7 +336,7 @@ class MyPlotWindow(qt.QMainWindow):
             x = msg.exec_()
         else:
             mypath = self.imagepath +'/'+ str(listwidget.selectedItems()[0].text())
-            print(mypath)
+
             plot.getDefaultColormap().setName('jet')
             cm = colors.Colormap(name='jet', normalization='log')
             plot.setDefaultColormap(cm)

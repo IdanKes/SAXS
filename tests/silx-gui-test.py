@@ -252,6 +252,7 @@ class MyPlotWindow(qt.QMainWindow):
         else:
             plot = self.getPlotWidget()
             self.curve_plot(plot)
+            a = self.colorbank()
 
             imagelist=[str(listwidget.item(i).text()) for i in range(listwidget.count())]
             for image in imagelist:
@@ -261,7 +262,7 @@ class MyPlotWindow(qt.QMainWindow):
             for item in datadict.items():
                 name=item[0]
                 res=item[1]
-                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name), linewidth=2)
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name), linewidth=2,color=next(a))
 
     def open(self):
         listwidget=self.listwidget
@@ -318,14 +319,15 @@ class MyPlotWindow(qt.QMainWindow):
             plot.addImage(image,resetzoom=True)
             plot.resetZoom()
 
+    def colorbank(self):
+        bank = ['blue', 'red', 'black', 'green']
+        i = 0
+        while True:
+            yield bank[i]
+            i += 1
+            i = i % len(bank)
+
     def PlotMulCurves(self):
-        def colorbank():
-            bank=['blue','red','black','green']
-            i=0
-            while True:
-                yield bank[i]
-                i+=1
-                i=i%len(bank)
         loadedlist = self.loadedlistwidget
         plot = self.getPlotWidget()
         plot.clear()
@@ -333,7 +335,7 @@ class MyPlotWindow(qt.QMainWindow):
         datadict=self.idata
         curvelist = [item.text() for item in loadedlist.selectedItems()]
         curvenames=[item.split('.')[0] for item in curvelist]
-        a = colorbank()
+        a = self.colorbank()
         for curve in curvenames:
             name=curve
             res=datadict[name]
