@@ -17,6 +17,7 @@ import importlib
 a=importlib.import_module('files.docklegend')
 MyCurveLegendsWidget=a.MyCurveLegendsWidget
 import pandas as pd
+from nexusformat.nexus import *
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -116,6 +117,7 @@ class MyPlotWindow(qt.QMainWindow):
         #Integration Data dict
         self.idata={}
         self.unitdict={'q (nm^-1)':"q_nm^-1",'q (A^-1)':"q_A^-1"}
+        self.nxs_file_dict = {}
 
         #Data Fields
         options2 = qt.QGroupBox('Calibration Data')
@@ -297,6 +299,7 @@ class MyPlotWindow(qt.QMainWindow):
 
     def open(self):
         listwidget=self.listwidget
+        listwidget.clear()
         filepath = qt.QFileDialog.getExistingDirectory(None, 'Select File')
         self.frame.setText('Directory :{}'.format(filepath))
         self.frame.setStyleSheet("border: 0.5px solid black;")
@@ -304,7 +307,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.imagepath=filepath
 
         try:
-            onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff'))]
+            onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff') or f.endswith('.nxs'))]
             for file in onlyfiles:
                 listwidget.addItem(str(file))
         except FileNotFoundError:
@@ -338,10 +341,11 @@ class MyPlotWindow(qt.QMainWindow):
         plot.clear()
 
         if listwidget.selectedItems()==[]:
-            msg = QMessageBox()
-            msg.setWindowTitle("Error")
-            msg.setText("Please Select an Image")
-            x = msg.exec_()
+            # msg = QMessageBox()
+            # msg.setWindowTitle("Error")
+            # msg.setText("Please Select an Image")
+            # x = msg.exec_()
+            None
         else:
             mypath = self.imagepath +'/'+ str(listwidget.selectedItems()[0].text())
 
@@ -351,9 +355,19 @@ class MyPlotWindow(qt.QMainWindow):
             plot.setYAxisLogarithmic(False)
             plot.setKeepDataAspectRatio(True)
             plot.setGraphGrid(which=None)
-            image = io.imread(mypath)
-            plot.addImage(image,resetzoom=True)
-            plot.resetZoom()
+            if mypath.endswith('tiff') or mypath.endswith('tif'):
+                image = io.imread(mypath)
+                plot.addImage(image,resetzoom=True)
+                plot.resetZoom()
+            if mypath.endswith('.nxs'):
+                for image in self.nxs_file_dict:
+                    image=self.nxs_file_dict['test2.nxs - image 1']
+                #plot.addImage(image, resetzoom=True)
+                #plot.resetZoom()
+            else:
+                None
+                #file not supported
+
 
     def colorbank(self):
         bank = ['blue', 'red', 'black', 'green']
@@ -415,6 +429,19 @@ class MyPlotWindow(qt.QMainWindow):
                 df=pd.read_csv(r'{}/{}.dat'.format(filepath,curve),header=None,sep="\s+",skiprows=23)
                 df.rename(columns={0: q_choice,1:'Intesnsity',2:'Sigma_I'},inplace=True)
                 df.to_csv(filepath+'/{}_csv.csv'.format(curve),index=False)
+
+    def open_nxs(self,path):
+        file=path.split('/')[-1]
+        nxs_file_dict=self.nxs_file_dict
+        nxs_file = nxload(path)
+        nxs_folder = [name for name in nxs_file.keys() if 'H' in name][0]
+        images_loc=nxs_file[nxs_folder].scan_data.eiger_image
+        images_data=numpy.array(images_loc)
+        image_count=list(range(1,len(images_data)+1))
+        zipped=zip(image_count,images_data)
+        for item in zipped:
+            nxs_file_dict['{} - image {}'.format(file,item[0])]=item[1]
+
 
 def main():
     global app
