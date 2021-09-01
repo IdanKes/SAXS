@@ -62,6 +62,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(button)
         listwidget=qt.QListWidget(self)
         layout.addWidget(listwidget)
+
         self.listwidget=listwidget
         listwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         listwidget.itemSelectionChanged.connect(self.ShowImage)
