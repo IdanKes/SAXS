@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QMessageBox
 import importlib
 a=importlib.import_module('files.docklegend')
 MyCurveLegendsWidget=a.MyCurveLegendsWidget
+import pandas as pd
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -25,7 +26,14 @@ class MyPlotWindow(qt.QMainWindow):
 
         # Create a PlotWidget
         self._plot = PlotWindow(parent=self)
-        a=qt.QSize(10,10)
+
+        #menu bar
+        menuBar = self.menuBar()
+        fileMenu = qt.QMenu("&More Options", self)
+        menuBar.addMenu(fileMenu)
+        self.save_csv_action = qt.QAction('Save Integrated Data as CSV File...',self)
+        fileMenu.addAction(self.save_csv_action)
+        self.save_csv_action.triggered.connect(self.save_csv)
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
@@ -296,7 +304,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.imagepath=filepath
 
         try:
-            onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and f.endswith('.tif')]
+            onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff'))]
             for file in onlyfiles:
                 listwidget.addItem(str(file))
         except FileNotFoundError:
@@ -390,6 +398,23 @@ class MyPlotWindow(qt.QMainWindow):
             msg.setWindowTitle("Error")
             msg.setText("Please select only 2 curves to subtract")
             x = msg.exec_()
+
+    def save_csv(self):
+        filepath=self.imagepath
+        q_choice = self.q_combo.currentText()
+        loadedlist = self.loadedlistwidget
+        curvelist = [item.text() for item in loadedlist.selectedItems()]
+        curvenames=[item.split('.')[0] for item in curvelist]
+        if curvelist==[]:
+            msg = QMessageBox()
+            msg.setWindowTitle("Error")
+            msg.setText("Please Select Integrated Curve to Save")
+            x = msg.exec_()
+        else:
+            for curve in curvenames:
+                df=pd.read_csv(r'{}/{}.dat'.format(filepath,curve),header=None,sep="\s+",skiprows=23)
+                df.rename(columns={0: q_choice,1:'Intesnsity',2:'Sigma_I'},inplace=True)
+                df.to_csv(filepath+'/{}_csv.csv'.format(curve),index=False)
 
 def main():
     global app
