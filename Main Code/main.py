@@ -1,4 +1,5 @@
 import numpy
+import re
 from silx.gui import qt
 from skimage import io
 from silx.gui.plot.PlotWindow import PlotWindow
@@ -12,7 +13,7 @@ import PIL
 from silx.gui.plot import tools
 from PyQt5 import QtWidgets
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QScrollBar
 import importlib
 a=importlib.import_module('files.docklegend')
 MyCurveLegendsWidget=a.MyCurveLegendsWidget
@@ -35,13 +36,18 @@ class MyPlotWindow(qt.QMainWindow):
         self.save_csv_action = qt.QAction('Save Integrated Data as CSV File...',self)
         fileMenu.addAction(self.save_csv_action)
         self.save_csv_action.triggered.connect(self.save_csv)
+        self.beamcenterx=0
+        self.beamcentery=0
+        self.wavelength=0
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
-                                      converters=[('Radius', lambda x, y: numpy.sqrt(x * x + y * y)),
-                                                  ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y, x))),
-                                                  ('X Position', lambda x,y: x),
-                                                  ('Y Position', lambda x,y: y)])
+                                      converters=[('Radius from Beam Center (px)', lambda x, y: numpy.sqrt((x-self.beamcenterx)**2 + (y-self.beamcentery)**2)),
+                                                  ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
+                                                  ('X Position (px)', lambda x,y: x),
+                                                  ('Y Position (px)', lambda x, y: y)])
+        #('q', lambda x, y: (4*numpy.pi*(numpy.sin(numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx)))))/self.wavelength)]
+
         toolBar = qt.QToolBar("xy", self)
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar)
         toolBar.addWidget(position)
@@ -60,12 +66,18 @@ class MyPlotWindow(qt.QMainWindow):
         button = qt.QPushButton("Load Image Folder", self)
         button.clicked.connect(self.open)
         layout.addWidget(button)
-        listwidget=qt.QListWidget(self)
-        layout.addWidget(listwidget)
 
-        self.listwidget=listwidget
-        listwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        listwidget.itemSelectionChanged.connect(self.ShowImage)
+        tw=qt.QTreeWidget(self)
+        #listwidget = qt.QListWidget(self)
+        #layout.addWidget(listwidget)
+        layout.addWidget(tw)
+        self.tw=tw
+        tw.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        tw.setHeaderHidden(True)
+        tw.itemSelectionChanged.connect(self.ShowImage)
+        #self.listwidget=listwidget
+        #listwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        #listwidget.itemSelectionChanged.connect(self.ShowImage)
         button = qt.QPushButton("Load PONI File", self)
         button.clicked.connect(self.open_poni)
         layout.addWidget(button)
@@ -133,10 +145,10 @@ class MyPlotWindow(qt.QMainWindow):
         layout2.addRow('Wavelength:', wavelength)
         layout2.addRow('Beam Center X:',beamcenterx)
         layout2.addRow('Beam Center Y:', beamcentery)
-        self.wavelength=wavelength
+        self.wavelengthdisplay=wavelength
         self.distance=distance
-        self.beamcenterx=beamcenterx
-        self.beamcentery=beamcentery
+        self.beamcenterxdisplay=beamcenterx
+        self.beamcenterydisplay=beamcentery
 
         # 1D loaded Images List
         options3=qt.QWidget(self)
@@ -194,7 +206,7 @@ class MyPlotWindow(qt.QMainWindow):
         """inital image logo"""
         plot = self.getPlotWidget()
         plot.getDefaultColormap().setName('viridis')
-        im = Image.open('saxi-omer.jpeg')
+        im = Image.open('saxsii.jpeg')
         im=im.rotate(180, PIL.Image.NEAREST, expand = 1)
         im_mirror = PIL.ImageOps.mirror(im)
         plot.addImage(im_mirror)
@@ -212,13 +224,20 @@ class MyPlotWindow(qt.QMainWindow):
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])
 
-    def full_integration(self,image,mask,poni,bins,minradius,maxradius,q_choice,datadict):
-        imagefolder=self.imagepath
-        imagepath=imagefolder+'/'+image
-        img = fabio.open(imagepath)
+    def full_integration(self,image,mask,poni,bins,minradius,maxradius,q_choice,datadict,nxs,nxs_file_dict):
+        if not nxs:
+            imagefolder=self.imagepath
+            imagepath=imagefolder+'/'+image
+            img = fabio.open(imagepath)
+            filename = image.split('.')[0]
+            img_array = img.data
+        if nxs:
+            imagefolder = self.imagepath
+            image_name = image.split('.')[0]+'.nxs'
+            image_data = nxs_file_dict[image_name][image]
+            img_array=image_data
+            filename=image
         ai = pyFAI.load(poni)
-        filename=image.split('.')[0]
-        img_array = img.data
         res = ai.integrate1d_ng(img_array,
                                 bins,
                                 mask=mask,
@@ -242,8 +261,10 @@ class MyPlotWindow(qt.QMainWindow):
         self.curve_plot(plot)
 
         listwidget = self.listwidget
+        tw=self.tw
+        nxs_file_dict=self.nxs_file_dict
         datadict=self.idata
-        imagelist = [item.text() for item in listwidget.selectedItems()]
+        imagelist = [item.text(0) for item in tw.selectedItems()]
         loadedlist = self.loadedlistwidget
         loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
         if len(imagelist)==0:
@@ -255,13 +276,29 @@ class MyPlotWindow(qt.QMainWindow):
             for image in imagelist:
                 if image not in loadeditemsTextList:
                     loadedlist.addItem(image)
+                    if (image.endswith('.tiff') or image.endswith('.tif')):
+                        self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict,nxs=False,nxs_file_dict=nxs_file_dict)
 
-                self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                      maxradius=maxradius,q_choice=q_choice, datadict=datadict)
-            for image in imagelist:
-                filename = image.split('.')[0]
-                res = datadict[filename]
-                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),linewidth=2)
+                        filename = image.split('.')[0]
+                        res = datadict[filename]
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
+                                      linewidth=2)
+                    regexp = re.compile(r'(?:nxs - image ).*$')
+                    if regexp.search(image):
+                        self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,nxs_file_dict=nxs_file_dict)
+                        res = datadict[image]
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image), linewidth=2)
+
+                    if image.endswith('.nxs'):
+                        None
+                else:
+                    if (image.endswith('.tiff') or image.endswith('.tif')):
+                        filename = image.split('.')[0]
+                        res = datadict[filename]
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),linewidth=2)
+                    #add nxs
 
     def Integrate_all(self):
         bins = int(self.bins.text())
@@ -300,17 +337,30 @@ class MyPlotWindow(qt.QMainWindow):
 
     def open(self):
         listwidget=self.listwidget
+        nxs_file_dict = self.nxs_file_dict
+        tw=self.tw
+        tw.clear()
         listwidget.clear()
-        filepath = qt.QFileDialog.getExistingDirectory(None, 'Select File')
+        filepath = qt.QFileDialog.getExistingDirectory(None, 'Select Folder')
         self.frame.setText('Directory :{}'.format(filepath))
         self.frame.setStyleSheet("border: 0.5px solid black;")
         self.frame.setFont(qt.QFont('Segoe UI',9))
         self.imagepath=filepath
-
         try:
             onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff') or f.endswith('.nxs'))]
             for file in onlyfiles:
                 listwidget.addItem(str(file))
+                treeitem=qt.QTreeWidgetItem([str(file)])
+                if file.endswith('.nxs'):
+                    try:
+                        self.open_nxs(filepath+'/'+file)
+                        keys=nxs_file_dict[file].keys()
+                        for key in keys:
+                            treeitemchild=qt.QTreeWidgetItem([key])
+                            treeitem.addChild(treeitemchild)
+                    except Exception:
+                        continue
+                tw.addTopLevelItem(treeitem)
         except FileNotFoundError:
             pass
 
@@ -324,10 +374,13 @@ class MyPlotWindow(qt.QMainWindow):
         data_dict = ai.get_config()
         layout2=self.layout2
         self.distance.setText(str(data_dict['dist']))
-        self.wavelength.setText(str(data_dict['wavelength']))
+        self.wavelengthdisplay.setText(str(data_dict['wavelength']))
         self.fit2ddata=ai.getFit2D()
-        self.beamcenterx.setText(str(self.fit2ddata['centerX']))
-        self.beamcentery.setText(str(self.fit2ddata['centerY']))
+        self.beamcenterxdisplay.setText(str(self.fit2ddata['centerX']))
+        self.beamcenterydisplay.setText(str(self.fit2ddata['centerY']))
+        self.beamcenterx=self.fit2ddata['centerX']
+        self.beamcentery=self.fit2ddata['centerY']
+        self.wavelength=data_dict['wavelength']
 
     def open_mask(self):
         filepath = qt.QFileDialog.getOpenFileName(self,filter='*.msk')
@@ -338,36 +391,43 @@ class MyPlotWindow(qt.QMainWindow):
 
     def ShowImage(self):
         listwidget = self.listwidget
+        tw=self.tw
         plot = self.getPlotWidget()
         plot.clear()
+        nxs_file_dict=self.nxs_file_dict
 
-        if listwidget.selectedItems()==[]:
+        if tw.selectedItems()==[]:
             # msg = QMessageBox()
             # msg.setWindowTitle("Error")
             # msg.setText("Please Select an Image")
             # x = msg.exec_()
             None
         else:
-            mypath = self.imagepath +'/'+ str(listwidget.selectedItems()[0].text())
-
+            #mypath = self.imagepath +'/'+ str(listwidget.selectedItems()[0].text())
+            filepath=self.imagepath +'/'+ str(tw.selectedItems()[0].text(0))
             plot.getDefaultColormap().setName('jet')
             cm = colors.Colormap(name='jet', normalization='log')
             plot.setDefaultColormap(cm)
             plot.setYAxisLogarithmic(False)
             plot.setKeepDataAspectRatio(True)
             plot.setGraphGrid(which=None)
-            if mypath.endswith('tiff') or mypath.endswith('tif'):
-                image = io.imread(mypath)
+            if (filepath.endswith('.tiff') or filepath.endswith('.tif')):
+                try:
+                    image = io.imread(filepath) #convert to fabio?
+                except Exception:
+                    im=fabio.open(filepath)
+                    image=im.data
                 plot.addImage(image,resetzoom=True)
                 plot.resetZoom()
-            if mypath.endswith('.nxs'):
-                for image in self.nxs_file_dict:
-                    image=self.nxs_file_dict['test2.nxs - image 1']
-                #plot.addImage(image, resetzoom=True)
-                #plot.resetZoom()
-            else:
+            if filepath.endswith('.nxs'):
                 None
-                #file not supported
+            regexp=re.compile(r'(?:nxs - image ).*$')
+            if regexp.search(filepath):
+                filename=filepath.split('.')[0].split('/')[-1]+'.nxs'
+                image_number=filepath.split('-')[-1]
+                image=nxs_file_dict[filename][filename+' -'+image_number]
+                plot.addImage(image, resetzoom=True)
+                plot.resetZoom()
 
 
     def colorbank(self):
@@ -432,17 +492,28 @@ class MyPlotWindow(qt.QMainWindow):
                 df.to_csv(filepath+'/{}_csv.csv'.format(curve),index=False)
 
     def open_nxs(self,path):
+        def find_scan_data(tree):
+            location = ''
+            keys = tree.keys()
+            if 'scan_data' in keys:
+                return location
+            for key in keys:
+                location += str(tree[key])
+                find_scan_data(tree[key])
+            return location
+
         file=path.split('/')[-1]
         nxs_file_dict=self.nxs_file_dict
+        nxs_file_dict[file] = {}
         nxs_file = nxload(path)
-        nxs_folder = [name for name in nxs_file.keys() if 'H' in name][0]
+        nxs_folder = find_scan_data(nxs_file)
         images_loc=nxs_file[nxs_folder].scan_data.eiger_image
         images_data=numpy.array(images_loc)
-        image_count=list(range(1,len(images_data)+1))
-        zipped=zip(image_count,images_data)
+        images_data1=numpy.flip(images_data,1)
+        image_count=list(range(1,len(images_data1)+1))
+        zipped=zip(image_count,images_data1)
         for item in zipped:
-            nxs_file_dict['{} - image {}'.format(file,item[0])]=item[1]
-
+            nxs_file_dict[file]['{} - image {}'.format(file,item[0])]=item[1]
 
 def main():
     global app
