@@ -260,7 +260,6 @@ class MyPlotWindow(qt.QMainWindow):
         plot = self.getPlotWidget()
         self.curve_plot(plot)
 
-        listwidget = self.listwidget
         tw=self.tw
         nxs_file_dict=self.nxs_file_dict
         datadict=self.idata
