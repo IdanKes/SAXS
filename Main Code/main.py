@@ -20,7 +20,6 @@ MyCurveLegendsWidget=a.MyCurveLegendsWidget
 import pandas as pd
 from nexusformat.nexus import *
 
-
 class MyPlotWindow(qt.QMainWindow):
 
     def __init__(self, parent=None):
@@ -66,18 +65,13 @@ class MyPlotWindow(qt.QMainWindow):
         button = qt.QPushButton("Load Image Folder", self)
         button.clicked.connect(self.open)
         layout.addWidget(button)
-
         tw=qt.QTreeWidget(self)
-        #listwidget = qt.QListWidget(self)
-        #layout.addWidget(listwidget)
         layout.addWidget(tw)
         self.tw=tw
         tw.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         tw.setHeaderHidden(True)
         tw.itemSelectionChanged.connect(self.ShowImage)
-        #self.listwidget=listwidget
-        #listwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        #listwidget.itemSelectionChanged.connect(self.ShowImage)
+        tw.itemDoubleClicked.connect(self.ShowImage)
         button = qt.QPushButton("Load PONI File", self)
         button.clicked.connect(self.open_poni)
         layout.addWidget(button)
@@ -437,7 +431,6 @@ class MyPlotWindow(qt.QMainWindow):
             # x = msg.exec_()
             None
         else:
-            #mypath = self.imagepath +'/'+ str(listwidget.selectedItems()[0].text())
             filepath=self.imagepath +'/'+ str(tw.selectedItems()[0].text(0))
             plot.getDefaultColormap().setName('jet')
             cm = colors.Colormap(name='jet', normalization='log')
@@ -480,16 +473,18 @@ class MyPlotWindow(qt.QMainWindow):
         datadict=self.idata
         curvelist = [item.text() for item in loadedlist.selectedItems()]
         a = self.colorbank()
+        color = next(a)
         for curve in curvelist:
-            if 'nxs' in curve:
+            if 'SUBTRACT' in curve:
                 res = datadict[curve]
-                color = next(a)
+                plot.addCurve(x=res['radial'], y=res['intensity'], yerror=res['sigma'], legend='{}'.format(curve),color=color, linewidth=2)
+            elif 'nxs' in curve:
+                res = datadict[curve]
                 plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(curve), color=color,
-                              linewidth=2)
+                               linewidth=2)
             else:
                 name=curve.split('.')[0]
                 res=datadict[name]
-                color=next(a)
                 plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name),color=color,linewidth=2)
 
     def subtractcurves(self):
@@ -510,6 +505,10 @@ class MyPlotWindow(qt.QMainWindow):
             res1 = datadict[name1]
             res2=datadict[name2]
             res3_intensity=abs(numpy.subtract(res1.intensity,res2.intensity))
+            res3={'radial':res1.radial,'intensity':res3_intensity,'sigma':res1.sigma}
+            name3=name1+' SUBTRACT '+name2
+            datadict[name3]=res3
+            loadedlist.addItem(name3)
             plot.addCurve(x=res1.radial,y=res3_intensity,legend='{}'.format(name1+' SUBTRACT '+name2),linewidth=1,color='green')
             plot.setGraphGrid(which='both')
 
