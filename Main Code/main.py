@@ -275,7 +275,6 @@ class MyPlotWindow(qt.QMainWindow):
         else:
             for image in imagelist:
                 if image not in loadeditemsTextList:
-                    loadedlist.addItem(image)
                     if (image.endswith('.tiff') or image.endswith('.tif')):
                         self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
                                               maxradius=maxradius, q_choice=q_choice, datadict=datadict,nxs=False,nxs_file_dict=nxs_file_dict)
@@ -284,13 +283,14 @@ class MyPlotWindow(qt.QMainWindow):
                         res = datadict[filename]
                         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
                                       linewidth=2)
+                        loadedlist.addItem(image)
                     regexp = re.compile(r'(?:nxs - image ).*$')
                     if regexp.search(image):
                         self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
                                               maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,nxs_file_dict=nxs_file_dict)
                         res = datadict[image]
                         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image), linewidth=2)
-
+                        loadedlist.addItem(image)
                     if image.endswith('.nxs'):
                         None
                 else:
@@ -301,6 +301,23 @@ class MyPlotWindow(qt.QMainWindow):
                     #add nxs
 
     def Integrate_all(self):
+
+        def get_subtree_nodes(tree_widget_item):
+            """Returns all QTreeWidgetItems in the subtree rooted at the given node."""
+            nodes = []
+            nodes.append(tree_widget_item)
+            for i in range(tree_widget_item.childCount()):
+                nodes.extend(get_subtree_nodes(tree_widget_item.child(i)))
+            return nodes
+
+        def get_all_items(tree_widget):
+            """Returns all QTreeWidgetItems in the given QTreeWidget."""
+            all_items = []
+            for i in range(tree_widget.topLevelItemCount()):
+                top_item = tree_widget.topLevelItem(i)
+                all_items.extend(get_subtree_nodes(top_item))
+            return all_items
+
         bins = int(self.bins.text())
         minradius = int(self.minradius.text())
         maxradius = int(self.maxradius.text())
@@ -311,11 +328,12 @@ class MyPlotWindow(qt.QMainWindow):
         q_choice = unit_dict[q_choice]
 
         datadict = self.idata
-        listwidget = self.listwidget
+        tw = self.tw
         loadedlist = self.loadedlistwidget
+        nxs_file_dict = self.nxs_file_dict
         loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
 
-        if listwidget.count()==0:
+        if tw.topLevelItemCount()==0:
             msg = QMessageBox()
             msg.setWindowTitle("Error")
             msg.setText("No Images to Integrate")
@@ -324,23 +342,42 @@ class MyPlotWindow(qt.QMainWindow):
             plot = self.getPlotWidget()
             self.curve_plot(plot)
             a = self.colorbank()
-
-            imagelist=[str(listwidget.item(i).text()) for i in range(listwidget.count())]
-            for image in imagelist:
+            imagelist=get_all_items(tw)
+            imagelist_names=[image.text(0) for image in imagelist]
+            print(imagelist_names)
+            for image in imagelist_names:
                 if image not in loadeditemsTextList:
-                    loadedlist.addItem(image)
-                self.full_integration(image=image,poni=poni,mask=mask.data,bins=bins,minradius=minradius,maxradius=maxradius,q_choice=q_choice,datadict=datadict)
-            for item in datadict.items():
-                name=item[0]
-                res=item[1]
-                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name), linewidth=2,color=next(a))
-
+                    if (image.endswith('.tiff') or image.endswith('.tif')):
+                        self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=False,
+                                              nxs_file_dict=nxs_file_dict)
+                        filename = image.split('.')[0]
+                        res = datadict[filename]
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
+                                      linewidth=2)
+                        loadedlist.addItem(image)
+                    if image.endswith('.nxs'):
+                        None
+                    regexp = re.compile(r'(?:nxs - image ).*$')
+                    if regexp.search(image):
+                        self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,
+                                              nxs_file_dict=nxs_file_dict)
+                        res = datadict[image]
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
+                                       linewidth=2)
+                        loadedlist.addItem(image)
+                else:
+                    if (image.endswith('.tiff') or image.endswith('.tif')):
+                        filename = image.split('.')[0]
+                        res = datadict[filename]
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
+                                      linewidth=2)
+                        #add nxs
     def open(self):
-        listwidget=self.listwidget
         nxs_file_dict = self.nxs_file_dict
         tw=self.tw
         tw.clear()
-        listwidget.clear()
         filepath = qt.QFileDialog.getExistingDirectory(None, 'Select Folder')
         self.frame.setText('Directory :{}'.format(filepath))
         self.frame.setStyleSheet("border: 0.5px solid black;")
@@ -349,7 +386,6 @@ class MyPlotWindow(qt.QMainWindow):
         try:
             onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff') or f.endswith('.nxs'))]
             for file in onlyfiles:
-                listwidget.addItem(str(file))
                 treeitem=qt.QTreeWidgetItem([str(file)])
                 if file.endswith('.nxs'):
                     try:
@@ -390,7 +426,6 @@ class MyPlotWindow(qt.QMainWindow):
         self.mask_label.setFont(qt.QFont('Segoe UI',9))
 
     def ShowImage(self):
-        listwidget = self.listwidget
         tw=self.tw
         plot = self.getPlotWidget()
         plot.clear()
@@ -445,20 +480,31 @@ class MyPlotWindow(qt.QMainWindow):
         self.curve_plot(plot)
         datadict=self.idata
         curvelist = [item.text() for item in loadedlist.selectedItems()]
-        curvenames=[item.split('.')[0] for item in curvelist]
         a = self.colorbank()
-        for curve in curvenames:
-            name=curve
-            res=datadict[name]
-            color=next(a)
-            plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name),color=color,linewidth=2)
+        for curve in curvelist:
+            if 'nxs' in curve:
+                res = datadict[curve]
+                color = next(a)
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(curve), color=color,
+                              linewidth=2)
+            else:
+                name=curve.split('.')[0]
+                res=datadict[name]
+                color=next(a)
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name),color=color,linewidth=2)
 
     def subtractcurves(self):
         loadedlist = self.loadedlistwidget
         plot = self.getPlotWidget()
         datadict = self.idata
         curvelist = [item.text() for item in loadedlist.selectedItems()]
-        curvenames = [item.split('.')[0] for item in curvelist]
+        curvenames=[]
+        for curve in curvelist:
+            if '.nxs' in curve:
+                curvenames.append(curve)
+            else:
+                curvenames.append(curve.split('.')[0])
+
         if len(curvelist)==2:
             name1 = curvenames[0]
             name2=curvenames[1]
@@ -479,7 +525,12 @@ class MyPlotWindow(qt.QMainWindow):
         q_choice = self.q_combo.currentText()
         loadedlist = self.loadedlistwidget
         curvelist = [item.text() for item in loadedlist.selectedItems()]
-        curvenames=[item.split('.')[0] for item in curvelist]
+        curvenames = []
+        for curve in curvelist:
+            if '.nxs' in curve:
+                curvenames.append(curve)
+            else:
+                curvenames.append(curve.split('.')[0])
         if curvelist==[]:
             msg = QMessageBox()
             msg.setWindowTitle("Error")
