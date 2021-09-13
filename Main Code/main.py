@@ -196,6 +196,23 @@ class MyPlotWindow(qt.QMainWindow):
         """"Returns the PlotWidget object """""
         return self._plot
 
+    def getIntegrationParams(self):
+        bins = int(self.bins.text())
+        minradius = int(self.minradius.text())
+        maxradius = int(self.maxradius.text())
+        poni = self.poni_file
+        mask = fabio.open(self.mask_file)
+        q_choice = self.q_combo.currentText()
+        unit_dict = self.unitdict
+        q_choice = unit_dict[q_choice]
+        plot = self.getPlotWidget()
+        self.curve_plot(plot)
+        nxs_file_dict = self.nxs_file_dict
+        datadict = self.idata
+        loadedlist = self.loadedlistwidget
+        return bins,minradius,maxradius,poni,mask,q_choice,nxs_file_dict,datadict,loadedlist,plot
+
+
     def showInitalImage(self):
         """inital image logo"""
         plot = self.getPlotWidget()
@@ -242,20 +259,21 @@ class MyPlotWindow(qt.QMainWindow):
         datadict[filename] = res
 
     def integrate(self,imagelist):
-        bins = int(self.bins.text())
-        minradius = int(self.minradius.text())
-        maxradius = int(self.maxradius.text())
-        poni = self.poni_file
-        mask = fabio.open(self.mask_file)
-        q_choice = self.q_combo.currentText()
-        unit_dict = self.unitdict
-        q_choice = unit_dict[q_choice]
-        plot = self.getPlotWidget()
-        self.curve_plot(plot)
+        bins, minradius, maxradius, poni, mask, q_choice, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
+        # bins = int(self.bins.text())
+        # minradius = int(self.minradius.text())
+        # maxradius = int(self.maxradius.text())
+        # poni = self.poni_file
+        # mask = fabio.open(self.mask_file)
+        # q_choice = self.q_combo.currentText()
+        # unit_dict = self.unitdict
+        # q_choice = unit_dict[q_choice]
+        # plot = self.getPlotWidget()
+        # self.curve_plot(plot)
         tw = self.tw
-        nxs_file_dict = self.nxs_file_dict
-        datadict = self.idata
-        loadedlist = self.loadedlistwidget
+        # nxs_file_dict = self.nxs_file_dict
+        # datadict = self.idata
+        # loadedlist = self.loadedlistwidget
 
         loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
         if len(imagelist) == 0:
@@ -353,27 +371,33 @@ class MyPlotWindow(qt.QMainWindow):
             pass
 
     def open_poni(self):
-        filepath = qt.QFileDialog.getOpenFileName(self,filter='*.poni')
-        self.poni_file=filepath[0]
-        self.poni_label.setText('loaded PONI file: /{}'.format(filepath[0].split("/")[-1]))
-        self.poni_label.setFont(qt.QFont('Segoe UI',9))
-        ai = pyFAI.load(self.poni_file)
-        data_dict = ai.get_config()
-        layout2=self.layout2
-        self.distance.setText(str(data_dict['dist']))
-        self.wavelengthdisplay.setText(str(data_dict['wavelength']))
-        self.fit2ddata=ai.getFit2D()
-        self.beamcenterxdisplay.setText(str(self.fit2ddata['centerX']))
-        self.beamcenterydisplay.setText(str(self.fit2ddata['centerY']))
-        self.beamcenterx=self.fit2ddata['centerX']
-        self.beamcentery=self.fit2ddata['centerY']
-        self.wavelength=data_dict['wavelength']
+        try:
+            filepath = qt.QFileDialog.getOpenFileName(self,filter='*.poni')
+            self.poni_file=filepath[0]
+            self.poni_label.setText('loaded PONI file: /{}'.format(filepath[0].split("/")[-1]))
+            self.poni_label.setFont(qt.QFont('Segoe UI',9))
+            ai = pyFAI.load(self.poni_file)
+            data_dict = ai.get_config()
+            layout2=self.layout2
+            self.distance.setText(str(data_dict['dist']))
+            self.wavelengthdisplay.setText(str(data_dict['wavelength']))
+            self.fit2ddata=ai.getFit2D()
+            self.beamcenterxdisplay.setText(str(self.fit2ddata['centerX']))
+            self.beamcenterydisplay.setText(str(self.fit2ddata['centerY']))
+            self.beamcenterx=self.fit2ddata['centerX']
+            self.beamcentery=self.fit2ddata['centerY']
+            self.wavelength=data_dict['wavelength']
+        except Exception:
+            None
 
     def open_mask(self):
-        filepath = qt.QFileDialog.getOpenFileName(self,filter='*.msk')
-        self.mask_file=filepath[0]
-        self.mask_label.setText('loaded Mask file: /{}'.format(filepath[0].split("/")[-1]))
-        self.mask_label.setFont(qt.QFont('Segoe UI',9))
+        try:
+            filepath = qt.QFileDialog.getOpenFileName(self,filter='*.msk')
+            self.mask_file=filepath[0]
+            self.mask_label.setText('loaded Mask file: /{}'.format(filepath[0].split("/")[-1]))
+            self.mask_label.setFont(qt.QFont('Segoe UI',9))
+        except Exception:
+            None
 
     def ShowImage(self):
         tw=self.tw
@@ -426,8 +450,8 @@ class MyPlotWindow(qt.QMainWindow):
         datadict=self.idata
         curvelist = [item.text() for item in loadedlist.selectedItems()]
         a = self.colorbank()
-        color = next(a)
         for curve in curvelist:
+            color = next(a)
             if 'SUBTRACT' in curve:
                 res = datadict[curve]
                 plot.addCurve(x=res['radial'], y=res['intensity'], yerror=res['sigma'], legend='{}'.format(curve),color=color, linewidth=2)
