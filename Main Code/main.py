@@ -26,7 +26,7 @@ class MyPlotWindow(qt.QMainWindow):
         super(MyPlotWindow, self).__init__(parent)
 
         # Create a PlotWidget
-        self._plot = PlotWindow(parent=self)
+        self._plot = PlotWindow(parent=self,roi=False)
 
         #menu bar
         menuBar = self.menuBar()
@@ -415,7 +415,6 @@ class MyPlotWindow(qt.QMainWindow):
         filepath = qt.QFileDialog.getOpenFileName(self,filter='*.msk')
         self.mask_file=filepath[0]
         self.mask_label.setText('loaded Mask file: /{}'.format(filepath[0].split("/")[-1]))
-        #self.frame.setStyleSheet("border: 0.5px solid black;")
         self.mask_label.setFont(qt.QFont('Segoe UI',9))
 
     def ShowImage(self):
@@ -425,10 +424,6 @@ class MyPlotWindow(qt.QMainWindow):
         nxs_file_dict=self.nxs_file_dict
 
         if tw.selectedItems()==[]:
-            # msg = QMessageBox()
-            # msg.setWindowTitle("Error")
-            # msg.setText("Please Select an Image")
-            # x = msg.exec_()
             None
         else:
             filepath=self.imagepath +'/'+ str(tw.selectedItems()[0].text(0))
