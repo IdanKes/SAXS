@@ -168,6 +168,7 @@ class MyPlotWindow(qt.QMainWindow):
         #Loaded Directory name
         frame = qt.QLabel(self)
         frame.setText("Directory:")
+        frame.setFont(qt.QFont('Segoe UI', 9))
         self.frame = frame
         self.frame.setStyleSheet("border: 0.5px solid black;")
 
@@ -346,8 +347,6 @@ class MyPlotWindow(qt.QMainWindow):
         tw.clear()
         filepath = qt.QFileDialog.getExistingDirectory(None, 'Select Folder')
         self.frame.setText('Directory :{}'.format(filepath))
-        self.frame.setStyleSheet("border: 0.5px solid black;")
-        self.frame.setFont(qt.QFont('Segoe UI',9))
         self.imagepath=filepath
         try:
             onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff') or f.endswith('.nxs'))]
