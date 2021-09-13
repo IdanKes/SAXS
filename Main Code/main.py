@@ -47,9 +47,14 @@ class MyPlotWindow(qt.QMainWindow):
                                                   ('Y Position (px)', lambda x, y: y)])
         #('q', lambda x, y: (4*numpy.pi*(numpy.sin(numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx)))))/self.wavelength)]
 
-        toolBar = qt.QToolBar("xy", self)
-        self.addToolBar(qt.Qt.BottomToolBarArea,toolBar)
-        toolBar.addWidget(position)
+        toolBar1 = qt.QToolBar("xy", self)
+        self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
+        progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
+        progressbar.setFixedSize(312,30)
+        progressbar.setTextVisible(False)
+        self.progressbar=progressbar
+        toolBar1.addWidget(position)
+        toolBar1.addWidget(progressbar)
 
         #window
         self.setWindowTitle("Saxsii")
@@ -118,7 +123,6 @@ class MyPlotWindow(qt.QMainWindow):
         for button in addbuttons:
             buttonsWidgetLayout.addWidget(button)
         layout.addWidget(buttonsWidget)
-
         layout.addStretch()
 
         #Integration Data dict
@@ -260,21 +264,7 @@ class MyPlotWindow(qt.QMainWindow):
 
     def integrate(self,imagelist):
         bins, minradius, maxradius, poni, mask, q_choice, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
-        # bins = int(self.bins.text())
-        # minradius = int(self.minradius.text())
-        # maxradius = int(self.maxradius.text())
-        # poni = self.poni_file
-        # mask = fabio.open(self.mask_file)
-        # q_choice = self.q_combo.currentText()
-        # unit_dict = self.unitdict
-        # q_choice = unit_dict[q_choice]
-        # plot = self.getPlotWidget()
-        # self.curve_plot(plot)
         tw = self.tw
-        # nxs_file_dict = self.nxs_file_dict
-        # datadict = self.idata
-        # loadedlist = self.loadedlistwidget
-
         loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
         if len(imagelist) == 0:
             msg = QMessageBox()
@@ -282,7 +272,12 @@ class MyPlotWindow(qt.QMainWindow):
             msg.setText("Please Select an Image to Integrate")
             x = msg.exec_()
         else:
+            length=len(imagelist)
+            i=1
             for image in imagelist:
+                pvalue=int((i/length)*100)
+                self.progressbar.setValue(pvalue)
+                self.progressbar.setFont(qt.QFont('Segoe UI',9))
                 if image not in loadeditemsTextList:
                     if (image.endswith('.tiff') or image.endswith('.tif')):
                         self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
@@ -305,6 +300,7 @@ class MyPlotWindow(qt.QMainWindow):
                         loadedlist.addItem(image)
                     if image.endswith('.nxs'):
                         None
+
                 else:
                     if (image.endswith('.tiff') or image.endswith('.tif')):
                         filename = image.split('.')[0]
@@ -316,7 +312,7 @@ class MyPlotWindow(qt.QMainWindow):
                         res = datadict[image]
                         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
                                       linewidth=2)
-
+                i+=1
     def Integrate(self):
         tw=self.tw
         imagelist=[item.text(0) for item in tw.selectedItems()]
@@ -542,8 +538,15 @@ class MyPlotWindow(qt.QMainWindow):
             nxs_file_dict[file]['{} - image {}'.format(file,item[0])]=item[1]
 
 def main():
+    StyleSheet = '''
+    #GreenProgressBar::chunk {
+        border-radius: 6px;
+        background-color: #009688;
+    }
+    '''
     global app
     app = qt.QApplication([])
+    app.setStyleSheet(StyleSheet)
     window = MyPlotWindow()
     window.setAttribute(qt.Qt.WA_DeleteOnClose)
     window.showInitalImage()
