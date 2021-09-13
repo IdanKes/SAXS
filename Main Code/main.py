@@ -241,26 +241,24 @@ class MyPlotWindow(qt.QMainWindow):
                                 radial_range=(minradius, maxradius))
         datadict[filename] = res
 
-    def Integrate(self):
-        bins=int(self.bins.text())
-        minradius=int(self.minradius.text())
-        maxradius=int(self.maxradius.text())
+    def integrate(self,imagelist):
+        bins = int(self.bins.text())
+        minradius = int(self.minradius.text())
+        maxradius = int(self.maxradius.text())
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
         q_choice = self.q_combo.currentText()
-        unit_dict=self.unitdict
-        q_choice=unit_dict[q_choice]
-
+        unit_dict = self.unitdict
+        q_choice = unit_dict[q_choice]
         plot = self.getPlotWidget()
         self.curve_plot(plot)
-
-        tw=self.tw
-        nxs_file_dict=self.nxs_file_dict
-        datadict=self.idata
-        imagelist = [item.text(0) for item in tw.selectedItems()]
+        tw = self.tw
+        nxs_file_dict = self.nxs_file_dict
+        datadict = self.idata
         loadedlist = self.loadedlistwidget
+
         loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
-        if len(imagelist)==0:
+        if len(imagelist) == 0:
             msg = QMessageBox()
             msg.setWindowTitle("Error")
             msg.setText("Please Select an Image to Integrate")
@@ -270,7 +268,8 @@ class MyPlotWindow(qt.QMainWindow):
                 if image not in loadeditemsTextList:
                     if (image.endswith('.tiff') or image.endswith('.tif')):
                         self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict,nxs=False,nxs_file_dict=nxs_file_dict)
+                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=False,
+                                              nxs_file_dict=nxs_file_dict)
 
                         filename = image.split('.')[0]
                         res = datadict[filename]
@@ -280,9 +279,11 @@ class MyPlotWindow(qt.QMainWindow):
                     regexp = re.compile(r'(?:nxs - image ).*$')
                     if regexp.search(image):
                         self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,nxs_file_dict=nxs_file_dict)
+                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,
+                                              nxs_file_dict=nxs_file_dict)
                         res = datadict[image]
-                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image), linewidth=2)
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
+                                      linewidth=2)
                         loadedlist.addItem(image)
                     if image.endswith('.nxs'):
                         None
@@ -290,11 +291,20 @@ class MyPlotWindow(qt.QMainWindow):
                     if (image.endswith('.tiff') or image.endswith('.tif')):
                         filename = image.split('.')[0]
                         res = datadict[filename]
-                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),linewidth=2)
-                    #add nxs
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
+                                      linewidth=2)
+                    regexp = re.compile(r'(?:nxs - image ).*$')
+                    if regexp.search(image):
+                        res = datadict[image]
+                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
+                                      linewidth=2)
+
+    def Integrate(self):
+        tw=self.tw
+        imagelist=[item.text(0) for item in tw.selectedItems()]
+        self.integrate((imagelist))
 
     def Integrate_all(self):
-
         def get_subtree_nodes(tree_widget_item):
             """Returns all QTreeWidgetItems in the subtree rooted at the given node."""
             nodes = []
@@ -311,62 +321,11 @@ class MyPlotWindow(qt.QMainWindow):
                 all_items.extend(get_subtree_nodes(top_item))
             return all_items
 
-        bins = int(self.bins.text())
-        minradius = int(self.minradius.text())
-        maxradius = int(self.maxradius.text())
-        poni = self.poni_file
-        mask = fabio.open(self.mask_file)
-        q_choice=self.q_combo.currentText()
-        unit_dict = self.unitdict
-        q_choice = unit_dict[q_choice]
+        tw=self.tw
+        imagelist=get_all_items(tw)
+        imagelist_names=[image.text(0) for image in imagelist]
+        self.integrate(imagelist_names)
 
-        datadict = self.idata
-        tw = self.tw
-        loadedlist = self.loadedlistwidget
-        nxs_file_dict = self.nxs_file_dict
-        loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
-
-        if tw.topLevelItemCount()==0:
-            msg = QMessageBox()
-            msg.setWindowTitle("Error")
-            msg.setText("No Images to Integrate")
-            x = msg.exec_()
-        else:
-            plot = self.getPlotWidget()
-            self.curve_plot(plot)
-            a = self.colorbank()
-            imagelist=get_all_items(tw)
-            imagelist_names=[image.text(0) for image in imagelist]
-            print(imagelist_names)
-            for image in imagelist_names:
-                if image not in loadeditemsTextList:
-                    if (image.endswith('.tiff') or image.endswith('.tif')):
-                        self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=False,
-                                              nxs_file_dict=nxs_file_dict)
-                        filename = image.split('.')[0]
-                        res = datadict[filename]
-                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
-                                      linewidth=2)
-                        loadedlist.addItem(image)
-                    if image.endswith('.nxs'):
-                        None
-                    regexp = re.compile(r'(?:nxs - image ).*$')
-                    if regexp.search(image):
-                        self.full_integration(image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                              maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,
-                                              nxs_file_dict=nxs_file_dict)
-                        res = datadict[image]
-                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
-                                       linewidth=2)
-                        loadedlist.addItem(image)
-                else:
-                    if (image.endswith('.tiff') or image.endswith('.tif')):
-                        filename = image.split('.')[0]
-                        res = datadict[filename]
-                        plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
-                                      linewidth=2)
-                        #add nxs
     def open(self):
         nxs_file_dict = self.nxs_file_dict
         tw=self.tw
@@ -397,7 +356,6 @@ class MyPlotWindow(qt.QMainWindow):
         filepath = qt.QFileDialog.getOpenFileName(self,filter='*.poni')
         self.poni_file=filepath[0]
         self.poni_label.setText('loaded PONI file: /{}'.format(filepath[0].split("/")[-1]))
-        #self.frame.setStyleSheet("border: 0.5px solid black;")
         self.poni_label.setFont(qt.QFont('Segoe UI',9))
         ai = pyFAI.load(self.poni_file)
         data_dict = ai.get_config()
