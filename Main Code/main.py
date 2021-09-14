@@ -3,9 +3,6 @@ import re
 from silx.gui import qt
 from skimage import io
 from silx.gui.plot.PlotWindow import PlotWindow
-from os import listdir
-from os.path import isfile, join
-from silx.gui import colors
 import pyFAI, fabio
 import subprocess
 from PIL import Image, ImageOps
@@ -13,12 +10,13 @@ import PIL
 from silx.gui.plot import tools
 from PyQt5 import QtWidgets
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
-from PyQt5.QtWidgets import QMessageBox, QScrollBar
-import importlib
-a=importlib.import_module('files.docklegend')
-MyCurveLegendsWidget=a.MyCurveLegendsWidget
 import pandas as pd
 from nexusformat.nexus import *
+from PyQt5.QtWidgets import QMessageBox
+from docking_bars import MyCurveLegendsWidget
+from open_methods import open_directory,open_poni,open_mask,open_nxs
+from plotting_methods import image_plot,curve_plot,plot_mul_curves
+
 
 class MyPlotWindow(qt.QMainWindow):
 
@@ -58,7 +56,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         #window
         self.setWindowTitle("Saxsii")
-        icon=qt.QIcon('icon.png')
+        icon=qt.QIcon('files/icon.png')
         self.setWindowIcon(icon)
 
         #layout
@@ -68,7 +66,7 @@ class MyPlotWindow(qt.QMainWindow):
         button.clicked.connect(self.InitiateCalibration)
         layout.addWidget(button)
         button = qt.QPushButton("Load Image Folder", self)
-        button.clicked.connect(self.open)
+        button.clicked.connect(self.open_directory_wrap)
         layout.addWidget(button)
         tw=qt.QTreeWidget(self)
         layout.addWidget(tw)
@@ -78,7 +76,7 @@ class MyPlotWindow(qt.QMainWindow):
         tw.itemSelectionChanged.connect(self.ShowImage)
         tw.itemDoubleClicked.connect(self.ShowImage)
         button = qt.QPushButton("Load PONI File", self)
-        button.clicked.connect(self.open_poni)
+        button.clicked.connect(self.open_poni_wrap)
         layout.addWidget(button)
         poni_label=qt.QLabel(self)
         poni_label.setText('No PONI')
@@ -86,7 +84,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(button)
         layout.addWidget(poni_label)
         button = qt.QPushButton("Load Mask File", self)
-        button.clicked.connect(self.open_mask)
+        button.clicked.connect(self.open_mask_wrap)
         layout.addWidget(button)
         mask_label = qt.QLabel(self)
         mask_label.setText('No Mask')
@@ -155,7 +153,7 @@ class MyPlotWindow(qt.QMainWindow):
         loadedlistwidget = qt.QListWidget(self)
         layout3.addWidget(loadedlistwidget)
         self.loadedlistwidget=loadedlistwidget
-        loadedlistwidget.itemSelectionChanged.connect(self.PlotMulCurves)
+        loadedlistwidget.itemSelectionChanged.connect(self.plot_mul_curves_wrap)
         loadedlistwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
         tools1d=qt.QLabel('1d Tools')
@@ -211,7 +209,7 @@ class MyPlotWindow(qt.QMainWindow):
         unit_dict = self.unitdict
         q_choice = unit_dict[q_choice]
         plot = self.getPlotWidget()
-        self.curve_plot(plot)
+        curve_plot(self,plot)
         nxs_file_dict = self.nxs_file_dict
         datadict = self.idata
         loadedlist = self.loadedlistwidget
@@ -222,20 +220,10 @@ class MyPlotWindow(qt.QMainWindow):
         """inital image logo"""
         plot = self.getPlotWidget()
         plot.getDefaultColormap().setName('viridis')
-        im = Image.open('saxsii.jpeg')
+        im = Image.open('files/saxsii.jpeg')
         im=im.rotate(180, PIL.Image.NEAREST, expand = 1)
         im_mirror = PIL.ImageOps.mirror(im)
         plot.addImage(im_mirror)
-
-    def curve_plot(self,plot):
-        plot.clear()
-        q_choice=self.q_combo.currentText()
-        plot.setGraphYLabel('Intensity')
-        plot.setGraphXLabel('Scattering vector {}'.format(q_choice))
-        plot.setYAxisLogarithmic(True)
-        plot.setKeepDataAspectRatio(False)
-        plot.setAxesDisplayed(True)
-        #plot.setGraphGrid(which='both')
 
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])
@@ -341,75 +329,27 @@ class MyPlotWindow(qt.QMainWindow):
         imagelist_names=[image.text(0) for image in imagelist]
         self.integrate(imagelist_names)
 
-    def open(self):
-        nxs_file_dict = self.nxs_file_dict
-        tw=self.tw
-        tw.clear()
-        filepath = qt.QFileDialog.getExistingDirectory(None, 'Select Folder')
-        self.frame.setText('Directory :{}'.format(filepath))
-        self.imagepath=filepath
-        try:
-            onlyfiles = [f for f in listdir(filepath) if isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff') or f.endswith('.nxs'))]
-            for file in onlyfiles:
-                treeitem=qt.QTreeWidgetItem([str(file)])
-                if file.endswith('.nxs'):
-                    try:
-                        self.open_nxs(filepath+'/'+file)
-                        keys=nxs_file_dict[file].keys()
-                        for key in keys:
-                            treeitemchild=qt.QTreeWidgetItem([key])
-                            treeitem.addChild(treeitemchild)
-                    except Exception:
-                        continue
-                tw.addTopLevelItem(treeitem)
-        except FileNotFoundError:
-            pass
+    def open_directory_wrap(self):
+        open_directory(self)
 
-    def open_poni(self):
-        try:
-            filepath = qt.QFileDialog.getOpenFileName(self,filter='*.poni')
-            self.poni_file=filepath[0]
-            self.poni_label.setText('loaded PONI file: /{}'.format(filepath[0].split("/")[-1]))
-            self.poni_label.setFont(qt.QFont('Segoe UI',9))
-            ai = pyFAI.load(self.poni_file)
-            data_dict = ai.get_config()
-            layout2=self.layout2
-            self.distance.setText(str(data_dict['dist']))
-            self.wavelengthdisplay.setText(str(data_dict['wavelength']))
-            self.fit2ddata=ai.getFit2D()
-            self.beamcenterxdisplay.setText(str(self.fit2ddata['centerX']))
-            self.beamcenterydisplay.setText(str(self.fit2ddata['centerY']))
-            self.beamcenterx=self.fit2ddata['centerX']
-            self.beamcentery=self.fit2ddata['centerY']
-            self.wavelength=data_dict['wavelength']
-        except Exception:
-            None
+    def open_poni_wrap(self):
+         open_poni(self)
 
-    def open_mask(self):
-        try:
-            filepath = qt.QFileDialog.getOpenFileName(self,filter='*.msk')
-            self.mask_file=filepath[0]
-            self.mask_label.setText('loaded Mask file: /{}'.format(filepath[0].split("/")[-1]))
-            self.mask_label.setFont(qt.QFont('Segoe UI',9))
-        except Exception:
-            None
+    def open_mask_wrap(self):
+        open_mask(self)
+
+    def open_nxs_wrap(self,path):
+        open_nxs(self,path)
 
     def ShowImage(self):
         tw=self.tw
         plot = self.getPlotWidget()
-        plot.clear()
         nxs_file_dict=self.nxs_file_dict
-
+        image_plot(plot)
         if tw.selectedItems()==[]:
             None
         else:
             filepath=self.imagepath +'/'+ str(tw.selectedItems()[0].text(0))
-            plot.getDefaultColormap().setName('jet')
-            cm = colors.Colormap(name='jet', normalization='log')
-            plot.setDefaultColormap(cm)
-            plot.setYAxisLogarithmic(False)
-            plot.setKeepDataAspectRatio(True)
-            plot.setGraphGrid(which=None)
             if (filepath.endswith('.tiff') or filepath.endswith('.tif')):
                 try:
                     image = io.imread(filepath) #convert to fabio?
@@ -429,35 +369,9 @@ class MyPlotWindow(qt.QMainWindow):
                 plot.resetZoom()
 
 
-    def colorbank(self):
-        bank = ['blue', 'red', 'black', 'green']
-        i = 0
-        while True:
-            yield bank[i]
-            i += 1
-            i = i % len(bank)
+    def plot_mul_curves_wrap(self):
+        plot_mul_curves(self)
 
-    def PlotMulCurves(self):
-        loadedlist = self.loadedlistwidget
-        plot = self.getPlotWidget()
-        plot.clear()
-        self.curve_plot(plot)
-        datadict=self.idata
-        curvelist = [item.text() for item in loadedlist.selectedItems()]
-        a = self.colorbank()
-        for curve in curvelist:
-            color = next(a)
-            if 'SUBTRACT' in curve:
-                res = datadict[curve]
-                plot.addCurve(x=res['radial'], y=res['intensity'], yerror=res['sigma'], legend='{}'.format(curve),color=color, linewidth=2)
-            elif 'nxs' in curve:
-                res = datadict[curve]
-                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(curve), color=color,
-                               linewidth=2)
-            else:
-                name=curve.split('.')[0]
-                res=datadict[name]
-                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(name),color=color,linewidth=2)
 
     def subtractcurves(self):
         loadedlist = self.loadedlistwidget
@@ -512,37 +426,11 @@ class MyPlotWindow(qt.QMainWindow):
                 df.rename(columns={0: q_choice,1:'Intesnsity',2:'Sigma_I'},inplace=True)
                 df.to_csv(filepath+'/{}_csv.csv'.format(curve),index=False)
 
-    def open_nxs(self,path):
-        def find_scan_data(tree):
-            location = ''
-            keys = tree.keys()
-            if 'scan_data' in keys:
-                return location
-            for key in keys:
-                location += str(tree[key])
-                find_scan_data(tree[key])
-            return location
 
-        file=path.split('/')[-1]
-        nxs_file_dict=self.nxs_file_dict
-        nxs_file_dict[file] = {}
-        nxs_file = nxload(path)
-        nxs_folder = find_scan_data(nxs_file)
-        images_loc=nxs_file[nxs_folder].scan_data.eiger_image
-        images_data=numpy.array(images_loc)
-        images_data1=numpy.flip(images_data,1)
-        image_count=list(range(1,len(images_data1)+1))
-        zipped=zip(image_count,images_data1)
-        for item in zipped:
-            nxs_file_dict[file]['{} - image {}'.format(file,item[0])]=item[1]
 
 def main():
-    StyleSheet = '''
-    #GreenProgressBar::chunk {
-        border-radius: 6px;
-        background-color: #009688;
-    }
-    '''
+    from styling import return_style
+    StyleSheet=return_style()
     global app
     app = qt.QApplication([])
     app.setStyleSheet(StyleSheet)
