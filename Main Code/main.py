@@ -10,12 +10,11 @@ import PIL
 from silx.gui.plot import tools
 from PyQt5 import QtWidgets
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
-import pandas as pd
-from nexusformat.nexus import *
 from PyQt5.QtWidgets import QMessageBox
 from docking_bars import MyCurveLegendsWidget
 from open_methods import open_directory,open_poni,open_mask,open_nxs
-from plotting_methods import image_plot,curve_plot,plot_mul_curves
+from plotting_methods import image_plot,curve_plot,plot_mul_curves,subtractcurves
+from saving_methods import save_csv
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -23,7 +22,7 @@ class MyPlotWindow(qt.QMainWindow):
     def __init__(self, parent=None):
         super(MyPlotWindow, self).__init__(parent)
 
-        # Create a PlotWidget
+        # Creating a PlotWidget
         self._plot = PlotWindow(parent=self,roi=False)
 
         #menu bar
@@ -32,7 +31,7 @@ class MyPlotWindow(qt.QMainWindow):
         menuBar.addMenu(fileMenu)
         self.save_csv_action = qt.QAction('Save Integrated Data as CSV File...',self)
         fileMenu.addAction(self.save_csv_action)
-        self.save_csv_action.triggered.connect(self.save_csv)
+        self.save_csv_action.triggered.connect(self.save_csv_wrap)
         self.beamcenterx=0
         self.beamcentery=0
         self.wavelength=0
@@ -54,12 +53,12 @@ class MyPlotWindow(qt.QMainWindow):
         toolBar1.addWidget(position)
         toolBar1.addWidget(progressbar)
 
-        #window
+        #window parameters
         self.setWindowTitle("Saxsii")
         icon=qt.QIcon('files/icon.png')
         self.setWindowIcon(icon)
 
-        #layout
+        #layout coniguration
         options = qt.QWidget(self)
         layout = qt.QVBoxLayout(options)
         button = qt.QPushButton("Calibration Tool", self)
@@ -123,7 +122,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(buttonsWidget)
         layout.addStretch()
 
-        #Integration Data dict
+        #Integration Data dicts
         self.idata={}
         self.unitdict={'q (nm^-1)':"q_nm^-1",'q (A^-1)':"q_A^-1"}
         self.nxs_file_dict = {}
@@ -146,7 +145,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.beamcenterxdisplay=beamcenterx
         self.beamcenterydisplay=beamcentery
 
-        # 1D loaded Images List
+        # Integrated Images List
         options3=qt.QWidget(self)
         layout3 =qt.QVBoxLayout(options3)
         layout3.addWidget(qt.QLabel('Integrated Images:'))
@@ -161,7 +160,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout3.addWidget(tools1d)
         subtracttbut=qt.QPushButton('subtract',self)
         layout3.addWidget(subtracttbut)
-        subtracttbut.clicked.connect(self.subtractcurves)
+        subtracttbut.clicked.connect(self.subtract_curves_wrap)
 
         #Loaded Directory name
         frame = qt.QLabel(self)
@@ -170,7 +169,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.frame = frame
         self.frame.setStyleSheet("border: 0.5px solid black;")
 
-        # Gui Geometry
+        # Gui Geometry Settings
         gridLayout = qt.QGridLayout()
         gridLayout.setSpacing(2)
         gridLayout.setContentsMargins(0, 0, 0, 0)
@@ -186,7 +185,7 @@ class MyPlotWindow(qt.QMainWindow):
         centralWidget.setLayout(gridLayout)
         self.setCentralWidget(centralWidget)
 
-        # legend dock
+        #legend dock
         plot = self._plot
         curveLegendsWidget = MyCurveLegendsWidget()
         curveLegendsWidget.setPlotWidget(plot)
@@ -196,7 +195,6 @@ class MyPlotWindow(qt.QMainWindow):
         plot.addDockWidget(qt.Qt.TopDockWidgetArea, dock)
 
     def getPlotWidget(self):
-        """"Returns the PlotWidget object """""
         return self._plot
 
     def getIntegrationParams(self):
@@ -372,60 +370,12 @@ class MyPlotWindow(qt.QMainWindow):
     def plot_mul_curves_wrap(self):
         plot_mul_curves(self)
 
+    def subtract_curves_wrap(self):
+        subtractcurves(self)
 
-    def subtractcurves(self):
-        loadedlist = self.loadedlistwidget
-        plot = self.getPlotWidget()
-        datadict = self.idata
-        curvelist = [item.text() for item in loadedlist.selectedItems()]
-        curvenames=[]
-        for curve in curvelist:
-            if '.nxs' in curve:
-                curvenames.append(curve)
-            else:
-                curvenames.append(curve.split('.')[0])
 
-        if len(curvelist)==2:
-            name1 = curvenames[0]
-            name2=curvenames[1]
-            res1 = datadict[name1]
-            res2=datadict[name2]
-            res3_intensity=abs(numpy.subtract(res1.intensity,res2.intensity))
-            res3={'radial':res1.radial,'intensity':res3_intensity,'sigma':res1.sigma}
-            name3=name1+' SUBTRACT '+name2
-            datadict[name3]=res3
-            loadedlist.addItem(name3)
-            plot.addCurve(x=res1.radial,y=res3_intensity,legend='{}'.format(name1+' SUBTRACT '+name2),linewidth=1,color='green')
-            plot.setGraphGrid(which='both')
-
-        else:
-            msg = QMessageBox()
-            msg.setWindowTitle("Error")
-            msg.setText("Please select only 2 curves to subtract")
-            x = msg.exec_()
-
-    def save_csv(self):
-        filepath=self.imagepath
-        q_choice = self.q_combo.currentText()
-        loadedlist = self.loadedlistwidget
-        curvelist = [item.text() for item in loadedlist.selectedItems()]
-        curvenames = []
-        for curve in curvelist:
-            if '.nxs' in curve:
-                curvenames.append(curve)
-            else:
-                curvenames.append(curve.split('.')[0])
-        if curvelist==[]:
-            msg = QMessageBox()
-            msg.setWindowTitle("Error")
-            msg.setText("Please Select Integrated Curve to Save")
-            x = msg.exec_()
-        else:
-            for curve in curvenames:
-                df=pd.read_csv(r'{}/{}.dat'.format(filepath,curve),header=None,sep="\s+",skiprows=23)
-                df.rename(columns={0: q_choice,1:'Intesnsity',2:'Sigma_I'},inplace=True)
-                df.to_csv(filepath+'/{}_csv.csv'.format(curve),index=False)
-
+    def save_csv_wrap(self):
+        save_csv(self)
 
 
 def main():
