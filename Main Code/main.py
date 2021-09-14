@@ -118,7 +118,7 @@ class MyPlotWindow(qt.QMainWindow):
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
         buttons = ['Integrate Selected','Integrate All']
         addbuttons = [qt.QPushButton(c) for c in buttons]
-        addbuttons[0].clicked.connect(self.Integrate)
+        addbuttons[0].clicked.connect(self.Integrate_selected)
         addbuttons[1].clicked.connect(self.Integrate_all)
         for button in addbuttons:
             buttonsWidgetLayout.addWidget(button)
@@ -314,7 +314,7 @@ class MyPlotWindow(qt.QMainWindow):
                         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
                                       linewidth=2)
                 i+=1
-    def Integrate(self):
+    def Integrate_selected(self):
         tw=self.tw
         imagelist=[item.text(0) for item in tw.selectedItems()]
         self.integrate((imagelist))
