@@ -18,7 +18,7 @@ from saving_methods import save_csv
 
 
 class MyPlotWindow(qt.QMainWindow):
-
+    """configuring GUI Parameteres and functionalities"""
     def __init__(self, parent=None):
         super(MyPlotWindow, self).__init__(parent)
 
@@ -373,10 +373,8 @@ class MyPlotWindow(qt.QMainWindow):
     def subtract_curves_wrap(self):
         subtractcurves(self)
 
-
     def save_csv_wrap(self):
         save_csv(self)
-
 
 def main():
     from styling import return_style
