@@ -14,6 +14,7 @@ from open_methods import open_directory,open_poni,open_mask,open_nxs
 from plotting_methods import image_plot,curve_plot,plot_mul_curves,subtractcurves
 from saving_methods import save_csv
 from integration_methods import full_integration,send_to_integration
+import pyFAI.units as unit
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -22,7 +23,7 @@ class MyPlotWindow(qt.QMainWindow):
         super(MyPlotWindow, self).__init__(parent)
 
         # Creating a PlotWidget
-        self._plot = PlotWindow(parent=self,roi=False)
+        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=True)
 
         #menu bar
         menuBar = self.menuBar()
@@ -35,6 +36,12 @@ class MyPlotWindow(qt.QMainWindow):
         self.beamcentery=0
         self.wavelength=0
 
+        #add functionalities to toolbar
+        plot_tool_bar=self.getPlotWidget().toolBar()
+        toolButton = qt.QToolButton(self)
+        toolButton.setCheckable(True)
+        plot_tool_bar.addWidget(toolButton)
+
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
                                       converters=[('Radius from Beam Center (px)', lambda x, y: numpy.sqrt((x-self.beamcenterx)**2 + (y-self.beamcentery)**2)),
@@ -46,7 +53,7 @@ class MyPlotWindow(qt.QMainWindow):
         toolBar1 = qt.QToolBar("xy", self)
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
         progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
-        progressbar.setFixedSize(312,30)
+        progressbar.setFixedSize(290,30)
         progressbar.setTextVisible(False)
         self.progressbar=progressbar
         toolBar1.addWidget(position)
@@ -306,6 +313,7 @@ def main():
     global app
     app = qt.QApplication([])
     app.setStyleSheet(StyleSheet)
+    app.setStyle('Fusion')
     window = MyPlotWindow()
     window.setAttribute(qt.Qt.WA_DeleteOnClose)
     window.showInitalImage()

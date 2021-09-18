@@ -1,7 +1,11 @@
+import numpy
 import re
 import fabio
 import pyFAI
 from silx.gui.qt import QMessageBox, QFont
+from utils import dotdict
+
+
 
 def full_integration(self, image, mask, poni, bins, minradius, maxradius, q_choice, datadict, nxs, nxs_file_dict):
     if not nxs:
@@ -17,14 +21,31 @@ def full_integration(self, image, mask, poni, bins, minradius, maxradius, q_choi
         img_array = image_data
         filename = image
     ai = pyFAI.load(poni)
-    res = ai.integrate1d_ng(img_array,
-                            bins,
-                            mask=mask,
-                            unit=q_choice,
-                            filename="{}/{}.dat".format(imagefolder, filename),
-                            error_model='poisson',
-                            radial_range=(minradius, maxradius))
-    datadict[filename] = res
+
+    #FIX-ME angstrem bug
+    if q_choice=="q_A^-1":
+        res = ai.integrate1d_ng(img_array,
+                                bins,
+                                mask=mask,
+                                unit="q_nm^-1",
+                                filename="{}/{}.dat".format(imagefolder, filename),
+                                error_model='poisson',
+                                radial_range=(minradius, maxradius))
+
+        new_radial=numpy.true_divide(res.radial, 10)
+        new_res={'radial':new_radial,'intensity':res.intensity,'sigma':res.sigma}
+        new_res=dotdict(new_res)
+        datadict[filename] = new_res
+
+    else:
+        res = ai.integrate1d_ng(img_array,
+                                bins,
+                                mask=mask,
+                                unit=q_choice,
+                                filename="{}/{}.dat".format(imagefolder, filename),
+                                error_model='poisson',
+                                radial_range=(minradius, maxradius))
+        datadict[filename] = res
 
 
 def send_to_integration(self, imagelist):
