@@ -205,8 +205,8 @@ class MyPlotWindow(qt.QMainWindow):
 
     def getIntegrationParams(self):
         bins = int(self.bins.text())
-        minradius = int(self.minradius.text())
-        maxradius = int(self.maxradius.text())
+        minradius = float(self.minradius.text())
+        maxradius = float(self.maxradius.text())
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
         q_choice = self.q_combo.currentText()
