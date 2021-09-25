@@ -35,6 +35,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.beamcenterx=0
         self.beamcentery=0
         self.wavelength=0
+        self.distance=0
 
         #add functionalities to toolbar
         plot_tool_bar=self.getPlotWidget().toolBar()
@@ -47,8 +48,9 @@ class MyPlotWindow(qt.QMainWindow):
                                       converters=[('Radius from Beam Center (px)', lambda x, y: numpy.sqrt((x-self.beamcenterx)**2 + (y-self.beamcentery)**2)),
                                                   ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
                                                   ('X Position (px)', lambda x,y: x),
-                                                  ('Y Position (px)', lambda x, y: y)])
-        #('q', lambda x, y: (4*numpy.pi*(numpy.sin(numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx)))))/self.wavelength)]
+                                                  ('Y Position (px)', lambda x, y: y),
+                                                ('q', lambda x, y: (4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.degrees(numpy.sqrt((y-self.beamcentery)**2+ (x-self.beamcenterx)**2)),self.distance)))/self.wavelength)))])
+
 
         toolBar1 = qt.QToolBar("xy", self)
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
@@ -138,16 +140,16 @@ class MyPlotWindow(qt.QMainWindow):
         #layout2 = qt.QFormLayout(options2)
         layout2=qt.QFormLayout(options2)
         self.layout2=layout2
-        wavelength=qt.QLineEdit()
-        distance=qt.QLineEdit()
-        beamcenterx=qt.QLineEdit()
-        beamcentery=qt.QLineEdit()
+        wavelength=qt.QLineEdit('0')
+        distance=qt.QLineEdit('0')
+        beamcenterx=qt.QLineEdit('0')
+        beamcentery=qt.QLineEdit('0')
         layout2.addRow('Distance:', distance)
         layout2.addRow('Wavelength:', wavelength)
         layout2.addRow('Beam Center X:',beamcenterx)
         layout2.addRow('Beam Center Y:', beamcentery)
         self.wavelengthdisplay=wavelength
-        self.distance=distance
+        self.distancedisplay=distance
         self.beamcenterxdisplay=beamcenterx
         self.beamcenterydisplay=beamcentery
 

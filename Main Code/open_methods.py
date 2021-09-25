@@ -41,7 +41,7 @@ def open_poni(self):
         ai = pyFAI.load(self.poni_file)
         data_dict = ai.get_config()
         layout2=self.layout2
-        self.distance.setText(str(data_dict['dist']))
+        self.distancedisplay.setText(str(data_dict['dist']))
         self.wavelengthdisplay.setText(str(data_dict['wavelength']))
         self.fit2ddata=ai.getFit2D()
         self.beamcenterxdisplay.setText(str(self.fit2ddata['centerX']))
@@ -49,6 +49,7 @@ def open_poni(self):
         self.beamcenterx=self.fit2ddata['centerX']
         self.beamcentery=self.fit2ddata['centerY']
         self.wavelength=data_dict['wavelength']
+        self.distance=data_dict['dist']
     except Exception:
         None
 
