@@ -49,9 +49,8 @@ class MyPlotWindow(qt.QMainWindow):
                                       converters=[('Radius from Beam Center (px)', lambda x, y: numpy.sqrt((x-self.beamcenterx)**2 + (y-self.beamcentery)**2)),
                                                   ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
                                                   ('X Position (px)', lambda x,y: x),
-                                                  ('Y Position (px)', lambda x, y: y)])
-
-# ('q', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)/(self.pixel_size)**2)**2+ ((x-self.beamcenterx)/(self.pixel_size)**2)**2),self.distance)/2))))/self.wavelength))
+                                                  ('Y Position (px)', lambda x, y: y),
+                                                ('q (a^-1)', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)*(self.pixel_size))**2+ ((x-self.beamcenterx)*(self.pixel_size))**2),self.distance)/2))))/(self.wavelength/10**(-10))))])
 
 
         toolBar1 = qt.QToolBar("xy", self)
