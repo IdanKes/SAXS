@@ -49,7 +49,7 @@ def full_integration(self,ai, image, mask, poni, bins, minradius, maxradius, q_c
     print(time.time()-t0)
 
 def send_to_integration(self, imagelist):
-    bins, minradius, maxradius, poni, mask, q_choice, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
+    bins, minradius, maxradius, poni, mask, q_choice,dezinger_choice, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
     tw = self.tw
     ai = pyFAI.load(poni)
     loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]

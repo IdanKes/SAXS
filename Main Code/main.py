@@ -36,6 +36,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.beamcentery=0
         self.wavelength=0
         self.distance=0
+        self.pixel_size=0
 
         #add functionalities to toolbar
         plot_tool_bar=self.getPlotWidget().toolBar()
@@ -48,8 +49,9 @@ class MyPlotWindow(qt.QMainWindow):
                                       converters=[('Radius from Beam Center (px)', lambda x, y: numpy.sqrt((x-self.beamcenterx)**2 + (y-self.beamcentery)**2)),
                                                   ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
                                                   ('X Position (px)', lambda x,y: x),
-                                                  ('Y Position (px)', lambda x, y: y),
-                                                ('q', lambda x, y: (4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.degrees(numpy.sqrt((y-self.beamcentery)**2+ (x-self.beamcenterx)**2)),self.distance)))/self.wavelength)))])
+                                                  ('Y Position (px)', lambda x, y: y)])
+
+# ('q', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)/(self.pixel_size)**2)**2+ ((x-self.beamcenterx)/(self.pixel_size)**2)**2),self.distance)/2))))/self.wavelength))
 
 
         toolBar1 = qt.QToolBar("xy", self)
@@ -118,6 +120,11 @@ class MyPlotWindow(qt.QMainWindow):
         sublayout.addRow('Radial unit:',q_combobox)
         q_combobox.addItems(['q (nm^-1)','q (A^-1)'])
         self.q_combo=q_combobox
+
+        dezing_combobox=qt.QComboBox()
+        sublayout.addRow('Dezinger Method:', dezing_combobox)
+        dezing_combobox.addItems(['sigma-clip', 'median-filter'])
+        self.dezing_combobox = dezing_combobox
 
         buttonsWidget = qt.QWidget()
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
@@ -212,6 +219,7 @@ class MyPlotWindow(qt.QMainWindow):
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
         q_choice = self.q_combo.currentText()
+        dezinger_choice=self.dezing_combobox.currentText()
         unit_dict = self.unitdict
         q_choice = unit_dict[q_choice]
         plot = self.getPlotWidget()
@@ -219,7 +227,7 @@ class MyPlotWindow(qt.QMainWindow):
         nxs_file_dict = self.nxs_file_dict
         datadict = self.idata
         loadedlist = self.loadedlistwidget
-        return bins,minradius,maxradius,poni,mask,q_choice,nxs_file_dict,datadict,loadedlist,plot
+        return bins,minradius,maxradius,poni,mask,q_choice,dezinger_choice,nxs_file_dict,datadict,loadedlist,plot
 
 
     def showInitalImage(self):
