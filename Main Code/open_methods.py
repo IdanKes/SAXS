@@ -40,7 +40,12 @@ def open_poni(self):
         self.poni_label.setFont(QFont('Segoe UI',9))
         ai = pyFAI.load(self.poni_file)
         data_dict = ai.get_config()
-        self.pixel_size=data_dict['detector_config']['pixel1']
+        detector=data_dict['detector']
+        #FIXME_data_dict bug from calib2
+        if detector=='Pilatus300k':
+            self.pixel_size=0.000172
+        else:
+            self.pixel_size=data_dict['detector_config']['pixel1']
         layout2=self.layout2
         self.distancedisplay.setText(str(data_dict['dist']))
         self.wavelengthdisplay.setText(str(data_dict['wavelength']))

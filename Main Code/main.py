@@ -61,8 +61,9 @@ class MyPlotWindow(qt.QMainWindow):
         progressbar.setFixedSize(290,30)
         progressbar.setTextVisible(False)
         self.progressbar=progressbar
-        self.toolbar1_action=qt.QAction(toolBar1.addWidget(position))
-        self.toolbar1_action.setVisible(False)
+        #self.toolbar1_action=qt.QAction(toolBar1.addWidget(position))
+        toolBar1.addWidget(position)
+        #self.toolbar1_action.setVisible(False)
         toolBar1.addWidget(progressbar)
 
         #window parameters
