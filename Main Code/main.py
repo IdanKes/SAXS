@@ -111,7 +111,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.bins=bins
         minradius=qt.QLineEdit('0')
         self.minradius=minradius
-        maxradius = qt.QLineEdit('10')
+        maxradius = qt.QLineEdit('1')
         self.maxradius = maxradius
 
         sublayout.addRow('Bins:',bins)
@@ -121,7 +121,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         q_combobox=qt.QComboBox()
         sublayout.addRow('Radial unit:',q_combobox)
-        q_combobox.addItems(['q (nm^-1)','q (A^-1)'])
+        q_combobox.addItems(['q (A^-1)','q (nm^-1)'])
         self.q_combo=q_combobox
 
         dezingparameters=qt.QGroupBox('Dezinger Parameters')

@@ -45,7 +45,10 @@ def open_poni(self):
         if detector=='Pilatus300k':
             self.pixel_size=0.000172
         else:
-            self.pixel_size=data_dict['detector_config']['pixel1']
+            try:
+                self.pixel_size=data_dict['detector_config']['pixel1']
+            except Exception:
+                None
         layout2=self.layout2
         self.distancedisplay.setText(str(data_dict['dist']))
         self.wavelengthdisplay.setText(str(data_dict['wavelength']))
