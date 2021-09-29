@@ -23,7 +23,7 @@ class MyPlotWindow(qt.QMainWindow):
         super(MyPlotWindow, self).__init__(parent)
 
         # Creating a PlotWidget
-        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=True)
+        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=False,yInverted=False,autoScale=False,mask=False,save=False)
 
         #menu bar
         menuBar = self.menuBar()
@@ -43,6 +43,7 @@ class MyPlotWindow(qt.QMainWindow):
         toolButton = qt.QToolButton(self)
         toolButton.setCheckable(True)
         plot_tool_bar.addWidget(toolButton)
+        toolButton.clicked.connect(self.check)
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
@@ -52,14 +53,16 @@ class MyPlotWindow(qt.QMainWindow):
                                                   ('Y Position (px)', lambda x, y: y),
                                                 ('q (a^-1)', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)*(self.pixel_size))**2+ ((x-self.beamcenterx)*(self.pixel_size))**2),self.distance)/2))))/(self.wavelength/10**(-10))))])
 
-
+        self.position=position
         toolBar1 = qt.QToolBar("xy", self)
+        self.toolbar1=toolBar1
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
         progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
         progressbar.setFixedSize(290,30)
         progressbar.setTextVisible(False)
         self.progressbar=progressbar
-        toolBar1.addWidget(position)
+        self.toolbar1_action=qt.QAction(toolBar1.addWidget(position))
+        self.toolbar1_action.setVisible(False)
         toolBar1.addWidget(progressbar)
 
         #window parameters
@@ -120,10 +123,11 @@ class MyPlotWindow(qt.QMainWindow):
         q_combobox.addItems(['q (nm^-1)','q (A^-1)'])
         self.q_combo=q_combobox
 
-        dezing_combobox=qt.QComboBox()
-        sublayout.addRow('Dezinger Method:', dezing_combobox)
-        dezing_combobox.addItems(['sigma-clip', 'median-filter'])
-        self.dezing_combobox = dezing_combobox
+        dezingparameters=qt.QGroupBox('Dezinger Parameters')
+        sub_layout_2=qt.QFormLayout(dezingparameters)
+        sigma_thres=qt.QLineEdit('5')
+        sub_layout_2.addRow('Sigma Threshold:', sigma_thres)
+        layout.addWidget(dezingparameters)
 
         buttonsWidget = qt.QWidget()
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
@@ -211,6 +215,17 @@ class MyPlotWindow(qt.QMainWindow):
     def getPlotWidget(self):
         return self._plot
 
+    #chekcing toolbar manipulations, use Qaction /toggling and putting the other toolbar
+    def check(self):
+        newpositions = [('X', lambda x, y: x)]
+        for func in self.position.getConverters()[1:]:
+            newpositions.append(func)
+        new_positon=tools.PositionInfo(plot=self._plot,converters=newpositions)
+        #self.toolbar1_action.setVisible(False)
+        #self.toolbar1.removeAction(self.toolbar1_action)
+        #self.toolbar1.addWidget(new_positon)
+        self.toolbar1.toggleViewAction().trigger()
+
     def getIntegrationParams(self):
         bins = int(self.bins.text())
         minradius = float(self.minradius.text())
@@ -218,7 +233,6 @@ class MyPlotWindow(qt.QMainWindow):
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
         q_choice = self.q_combo.currentText()
-        dezinger_choice=self.dezing_combobox.currentText()
         unit_dict = self.unitdict
         q_choice = unit_dict[q_choice]
         plot = self.getPlotWidget()
@@ -226,7 +240,7 @@ class MyPlotWindow(qt.QMainWindow):
         nxs_file_dict = self.nxs_file_dict
         datadict = self.idata
         loadedlist = self.loadedlistwidget
-        return bins,minradius,maxradius,poni,mask,q_choice,dezinger_choice,nxs_file_dict,datadict,loadedlist,plot
+        return bins,minradius,maxradius,poni,mask,q_choice,nxs_file_dict,datadict,loadedlist,plot
 
 
     def showInitalImage(self):
