@@ -51,7 +51,7 @@ class MyPlotWindow(qt.QMainWindow):
                                                   ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
                                                   ('X Position (px)', lambda x,y: x),
                                                   ('Y Position (px)', lambda x, y: y),
-                                                ('q (a^-1)', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)*(self.pixel_size))**2+ ((x-self.beamcenterx)*(self.pixel_size))**2),self.distance)/2))))/(self.wavelength/10**(-10))))])
+                                                (u'q (\u212B)', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)*(self.pixel_size))**2+ ((x-self.beamcenterx)*(self.pixel_size))**2),self.distance)/2))))/(self.wavelength/10**(-10))))])
 
         self.position=position
         toolBar1 = qt.QToolBar("xy", self)
@@ -121,7 +121,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         q_combobox=qt.QComboBox()
         sublayout.addRow('Radial unit:',q_combobox)
-        q_combobox.addItems(['q (A^-1)','q (nm^-1)'])
+        q_combobox.addItems([u'q (\u212B)','q (nm^-1)'])
         self.q_combo=q_combobox
 
         dezingparameters=qt.QGroupBox('Dezinger Parameters')
@@ -143,7 +143,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         #Integration Data dicts
         self.idata={}
-        self.unitdict={'q (nm^-1)':"q_nm^-1",'q (A^-1)':"q_A^-1"}
+        self.unitdict={'q (nm^-1)':"q_nm^-1",u'q (\u212B)':"q_A^-1"}
         self.nxs_file_dict = {}
 
         #Data Fields
@@ -156,7 +156,7 @@ class MyPlotWindow(qt.QMainWindow):
         beamcenterx=qt.QLineEdit('0')
         beamcentery=qt.QLineEdit('0')
         layout2.addRow('Distance (m):', distance)
-        layout2.addRow('Wavelength (a^-1):', wavelength)
+        layout2.addRow(u'Wavelength (\u212B):', wavelength)
         layout2.addRow('Beam Center X (px):',beamcenterx)
         layout2.addRow('Beam Center Y (px):', beamcentery)
         self.wavelengthdisplay=wavelength
