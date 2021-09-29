@@ -32,8 +32,7 @@ def full_integration(self,ai, image, mask, poni, bins, minradius, maxradius, q_c
                                 error_model='poisson',
                                 radial_range=(minradius, maxradius))
 
-        new_radial=numpy.true_divide(res.radial, 10)
-        new_res={'radial':new_radial,'intensity':res.intensity,'sigma':res.sigma}
+        new_res={'radial':res.radial,'intensity':res.intensity,'sigma':res.sigma}
         new_res=dotdict(new_res)
         datadict[filename] = new_res
 
