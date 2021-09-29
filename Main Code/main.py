@@ -128,7 +128,7 @@ class MyPlotWindow(qt.QMainWindow):
         dezingparameters=qt.QGroupBox('Dezinger Parameters')
         sub_layout_2=qt.QFormLayout(dezingparameters)
         sigma_thres=qt.QLineEdit('5')
-        sub_layout_2.addRow('Sigma Threshold:', sigma_thres)
+        sub_layout_2.addRow('Sigma Clip Threshold:', sigma_thres)
         layout.addWidget(dezingparameters)
 
         buttonsWidget = qt.QWidget()
