@@ -22,7 +22,7 @@ def full_integration(self,ai, image, mask, poni, bins, minradius, maxradius, q_c
         img_array = image_data
         filename = image
     t0 = time.time()
-    #FIX-ME angstrem bug
+    #FIX-ME take into consideration the binning and radial range
     if q_choice=="q_A^-1":
         res = ai.integrate1d_ng(img_array,
                                 bins,

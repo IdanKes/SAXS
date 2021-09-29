@@ -23,7 +23,7 @@ class MyPlotWindow(qt.QMainWindow):
         super(MyPlotWindow, self).__init__(parent)
 
         # Creating a PlotWidget
-        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=False,yInverted=False,autoScale=False,mask=False,save=False)
+        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=False,yInverted=False,autoScale=False,mask=False,save=False, curveStyle=False)
 
         #menu bar
         menuBar = self.menuBar()
@@ -172,6 +172,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout3.addWidget(loadedlistwidget)
         self.loadedlistwidget=loadedlistwidget
         loadedlistwidget.itemSelectionChanged.connect(self.plot_mul_curves_wrap)
+        loadedlistwidget.itemDoubleClicked.connect(self.plot_mul_curves_wrap)
         loadedlistwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
         tools1d=qt.QLabel('1d Tools')
