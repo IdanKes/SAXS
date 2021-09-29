@@ -50,11 +50,11 @@ def open_poni(self):
             except Exception:
                 None
         layout2=self.layout2
-        self.distancedisplay.setText(str(data_dict['dist']))
+        self.distancedisplay.setText('%.2f' % data_dict['dist'])
         self.wavelengthdisplay.setText(str(data_dict['wavelength']))
         self.fit2ddata=ai.getFit2D()
-        self.beamcenterxdisplay.setText(str(self.fit2ddata['centerX']))
-        self.beamcenterydisplay.setText(str(self.fit2ddata['centerY']))
+        self.beamcenterxdisplay.setText('%.2f' % self.fit2ddata['centerX'])
+        self.beamcenterydisplay.setText('%.2f' % self.fit2ddata['centerY'])
         self.beamcenterx=self.fit2ddata['centerX']
         self.beamcentery=self.fit2ddata['centerY']
         self.wavelength=data_dict['wavelength']

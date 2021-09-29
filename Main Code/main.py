@@ -58,7 +58,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.toolbar1=toolBar1
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
         progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
-        progressbar.setFixedSize(290,30)
+        progressbar.setFixedSize(310,30)
         progressbar.setTextVisible(False)
         self.progressbar=progressbar
         #self.toolbar1_action=qt.QAction(toolBar1.addWidget(position))
@@ -155,10 +155,10 @@ class MyPlotWindow(qt.QMainWindow):
         distance=qt.QLineEdit('0')
         beamcenterx=qt.QLineEdit('0')
         beamcentery=qt.QLineEdit('0')
-        layout2.addRow('Distance:', distance)
-        layout2.addRow('Wavelength:', wavelength)
-        layout2.addRow('Beam Center X:',beamcenterx)
-        layout2.addRow('Beam Center Y:', beamcentery)
+        layout2.addRow('Distance (m):', distance)
+        layout2.addRow('Wavelength (a^-1):', wavelength)
+        layout2.addRow('Beam Center X (px):',beamcenterx)
+        layout2.addRow('Beam Center Y (px):', beamcentery)
         self.wavelengthdisplay=wavelength
         self.distancedisplay=distance
         self.beamcenterxdisplay=beamcenterx
