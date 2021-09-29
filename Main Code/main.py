@@ -42,6 +42,7 @@ class MyPlotWindow(qt.QMainWindow):
         plot_tool_bar=self.getPlotWidget().toolBar()
         toolButton = qt.QToolButton(self)
         toolButton.setCheckable(True)
+        toolButton.setIcon(qt.QIcon('files/toggle.ico'))
         plot_tool_bar.addWidget(toolButton)
         toolButton.clicked.connect(self.check)
 
