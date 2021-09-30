@@ -125,6 +125,7 @@ class MyPlotWindow(qt.QMainWindow):
         q_combobox.addItems([u'q (\u212B)',u'q (nm\u207B\u00B9)'])
         self.q_combo=q_combobox
 
+        # dezinging paramteres
         dezingparameters=qt.QGroupBox('Dezinger Parameters')
         sub_layout_2=qt.QFormLayout(dezingparameters)
         sigma_thres=qt.QLineEdit('5')
