@@ -122,7 +122,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         q_combobox=qt.QComboBox()
         sublayout.addRow('Radial unit:',q_combobox)
-        q_combobox.addItems([u'q (\u212B)',u'q (\u339A\u207B\u00B9)'])
+        q_combobox.addItems([u'q (\u212B)',u'q (nm\u207B\u00B9)'])
         self.q_combo=q_combobox
 
         dezingparameters=qt.QGroupBox('Dezinger Parameters')
@@ -144,7 +144,7 @@ class MyPlotWindow(qt.QMainWindow):
 
         #Integration Data dicts
         self.idata={}
-        self.unitdict={u'q (\u339A\u207B\u00B9)':"q_nm^-1",u'q (\u212B)':"q_A^-1"}
+        self.unitdict={u'q (nm\u207B\u00B9)':"q_nm^-1",u'q (\u212B)':"q_A^-1"}
         self.nxs_file_dict = {}
 
         #Data Fields

@@ -42,7 +42,7 @@ def open_poni(self):
         data_dict = ai.get_config()
         detector=data_dict['detector']
         #FIXME_data_dict bug from calib2
-        if detector=='Pilatus300k':
+        if detector=='Pilatus300k' or 'Pilatus6M':
             self.pixel_size=0.000172
         else:
             try:
