@@ -131,6 +131,8 @@ class MyPlotWindow(qt.QMainWindow):
         sigma_thres=qt.QLineEdit('5')
         sub_layout_2.addRow('Sigma Clip Threshold:', sigma_thres)
         layout.addWidget(dezingparameters)
+        self.dezing_thres=sigma_thres
+
 
         buttonsWidget = qt.QWidget()
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
@@ -236,6 +238,7 @@ class MyPlotWindow(qt.QMainWindow):
         maxradius = float(self.maxradius.text())
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
+        dezing_thres=float(self.dezing_thres.text())
         q_choice = self.q_combo.currentText()
         unit_dict = self.unitdict
         q_choice = unit_dict[q_choice]
@@ -244,7 +247,7 @@ class MyPlotWindow(qt.QMainWindow):
         nxs_file_dict = self.nxs_file_dict
         datadict = self.idata
         loadedlist = self.loadedlistwidget
-        return bins,minradius,maxradius,poni,mask,q_choice,nxs_file_dict,datadict,loadedlist,plot
+        return bins,minradius,maxradius,poni,mask,q_choice,dezing_thres,nxs_file_dict,datadict,loadedlist,plot
 
 
     def showInitalImage(self):

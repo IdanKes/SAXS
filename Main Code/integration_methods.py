@@ -8,7 +8,7 @@ from utils import dotdict
 
 
 
-def full_integration(self,ai, image, mask, poni, bins, minradius, maxradius, q_choice, datadict, nxs, nxs_file_dict):
+def full_integration(self,ai, image, mask, poni,dezing_thres, bins, minradius, maxradius, q_choice, datadict, nxs, nxs_file_dict):
     if not nxs:
         imagefolder = self.imagepath
         imagepath = imagefolder + '/' + image
@@ -24,31 +24,33 @@ def full_integration(self,ai, image, mask, poni, bins, minradius, maxradius, q_c
     t0 = time.time()
     #FIX-ME take into consideration the binning and radial range
     if q_choice=="q_A^-1":
-        res = ai.integrate1d_ng(img_array,
+        res = ai.sigma_clip_ng(img_array,
                                 bins,
                                 mask=mask,
                                 unit="q_A^-1",
-                                filename="{}/{}.dat".format(imagefolder, filename),
                                 error_model='poisson',
-                                radial_range=(minradius, maxradius))
+                                thres=dezing_thres,
+                                radial_range=(minradius, maxradius),
+                                method=("full","csr","opencl"))
 
         new_res={'radial':res.radial,'intensity':res.intensity,'sigma':res.sigma}
         new_res=dotdict(new_res)
         datadict[filename] = new_res
 
     else:
-        res = ai.integrate1d_ng(img_array,
+        res = ai.sigma_clip_ng(img_array,
                                 bins,
                                 mask=mask,
                                 unit=q_choice,
-                                filename="{}/{}.dat".format(imagefolder, filename),
                                 error_model='poisson',
-                                radial_range=(minradius, maxradius))
+                                thres=dezing_thres,
+                                radial_range=(minradius, maxradius),
+                                method=("full", "csr", "opencl"))
         datadict[filename] = res
     print(time.time()-t0)
 
 def send_to_integration(self, imagelist):
-    bins, minradius, maxradius, poni, mask, q_choice, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
+    bins, minradius, maxradius, poni, mask, q_choice,dezing_thres, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
     tw = self.tw
     ai = pyFAI.load(poni)
     loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
@@ -67,7 +69,7 @@ def send_to_integration(self, imagelist):
             if image not in loadeditemsTextList:
                 if (image.endswith('.tiff') or image.endswith('.tif')):
                     full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                          maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=False,
+                                          maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=False,
                                           nxs_file_dict=nxs_file_dict)
 
                     filename = image.split('.')[0]
@@ -78,7 +80,7 @@ def send_to_integration(self, imagelist):
                 regexp = re.compile(r'(?:nxs - image ).*$')
                 if regexp.search(image):
                     full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                          maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,
+                                          maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=True,
                                           nxs_file_dict=nxs_file_dict)
                     res = datadict[image]
                     plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
