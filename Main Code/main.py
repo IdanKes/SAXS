@@ -234,7 +234,7 @@ class MyPlotWindow(qt.QMainWindow):
     def getPlotWidget(self):
         return self._plot
 
-    #chekcing toolbar manipulations, use Qaction /toggling and putting the other toolbar
+    #chekcing toolbar manipulations, use Qaction /toggling and putting the other toolbar - USED FOR LEGEND TOGGLE
     def check(self):
         newpositions = [('X', lambda x, y: x)]
         for func in self.position.getConverters()[1:]:
