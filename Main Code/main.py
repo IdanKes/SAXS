@@ -23,15 +23,28 @@ class MyPlotWindow(qt.QMainWindow):
         super(MyPlotWindow, self).__init__(parent)
 
         # Creating a PlotWidget
-        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=False,yInverted=False,autoScale=False,mask=False,save=False, curveStyle=False)
+        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=False,yInverted=False,autoScale=False,mask=False,save=False, curveStyle=False,copy=False,grid=False)
+        self._plot.setContextMenuPolicy(qt.Qt.ActionsContextMenu)
+        self.setqminAction = qt.QAction(self)
+        self.setqminAction.setText("Set q min visually")
+        self.setqminAction.triggered.connect(self.set_q_min)
+        self.setqmaxAction = qt.QAction(self)
+        self.setqmaxAction.setText("Set q max visually")
+        self.setcenter = qt.QAction(self)
+        self.setcenter.setText("Set center visually")
+        self._plot.addAction(self.setqminAction)
+        self._plot.addAction(self.setqmaxAction)
+        self._plot.addAction(self.setcenter)
 
-        #menu bar
+        #window menu bar
         menuBar = self.menuBar()
         fileMenu = qt.QMenu("&More Options", self)
         menuBar.addMenu(fileMenu)
         self.save_csv_action = qt.QAction('Save Integrated Data as CSV File...',self)
         fileMenu.addAction(self.save_csv_action)
         self.save_csv_action.triggered.connect(self.save_csv_wrap)
+
+        #global parameters
         self.beamcenterx=0
         self.beamcentery=0
         self.wavelength=0
@@ -231,6 +244,20 @@ class MyPlotWindow(qt.QMainWindow):
         #self.toolbar1.removeAction(self.toolbar1_action)
         #self.toolbar1.addWidget(new_positon)
         self.toolbar1.toggleViewAction().trigger()
+        #http://www.silx.org/doc/silx/latest/modules/gui/plot/actions/examples.html
+
+    def set_q_min(self):
+        plot=self.getPlotWidget()
+        plot.setGraphCursor(True)
+        def mouse_tracker(dict):
+            if dict['event']=='mouseClicked' and dict['button']=='left':
+                x,y=dict['x'],dict['y']
+                plot.setGraphCursor(False)
+                print(x,y)
+                #use this to draw circle
+                plot.setCallback()
+        self._plot.setCallback(callbackFunction=mouse_tracker)
+
 
     def getIntegrationParams(self):
         bins = int(self.bins.text())
