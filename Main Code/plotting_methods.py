@@ -46,7 +46,7 @@ def plot_center_beam_image(self, plot, image):
     centery = int(self.beamcentery)
     cv2.circle(image, (centerx, centery), 4, (255, 255, 255), -1)
     plot.addImage(image, resetzoom=True)
-
+#
 def colorbank():
     bank = ['blue', 'red', 'black', 'green']
     i = 0
