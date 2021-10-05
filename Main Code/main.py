@@ -11,7 +11,7 @@ from PyQt5 import QtWidgets
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
 from docking_bars import MyCurveLegendsWidget
 from open_methods import open_directory,open_poni,open_mask,open_nxs
-from plotting_methods import image_plot,curve_plot,plot_mul_curves,subtractcurves
+from plotting_methods import image_plot_settings,curve_plot_settings,plot_mul_curves,subtractcurves,plot_image
 from saving_methods import save_csv
 from integration_methods import full_integration,send_to_integration
 import pyFAI.units as unit
@@ -30,11 +30,17 @@ class MyPlotWindow(qt.QMainWindow):
         self.setqminAction.triggered.connect(self.set_q_min)
         self.setqmaxAction = qt.QAction(self)
         self.setqmaxAction.setText("Set q max visually")
+        self.setqmaxAction.triggered.connect(self.set_q_max)
         self.setcenter = qt.QAction(self)
         self.setcenter.setText("Set center visually")
         self._plot.addAction(self.setqminAction)
         self._plot.addAction(self.setqmaxAction)
         self._plot.addAction(self.setcenter)
+
+        self.setqminAction.setEnabled(False)
+        self.setqmaxAction.setEnabled(False)
+        self.setcenter.setEnabled(False)
+
 
         #window menu bar
         menuBar = self.menuBar()
@@ -50,6 +56,8 @@ class MyPlotWindow(qt.QMainWindow):
         self.wavelength=0
         self.distance=0
         self.pixel_size=0
+        self.min_radius=0
+        self.max_radius=0
 
         #add functionalities to toolbar
         plot_tool_bar=self.getPlotWidget().toolBar()
@@ -71,6 +79,7 @@ class MyPlotWindow(qt.QMainWindow):
         toolBar1 = qt.QToolBar("xy", self)
         self.toolbar1=toolBar1
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
+
         progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
         progressbar.setFixedSize(310,30)
         progressbar.setTextVisible(False)
@@ -123,20 +132,28 @@ class MyPlotWindow(qt.QMainWindow):
         sublayout=qt.QFormLayout(integparams)
         bins=qt.QLineEdit('1000')
         self.bins=bins
-        minradius=qt.QLineEdit('0')
-        self.minradius=minradius
-        maxradius = qt.QLineEdit('1')
-        self.maxradius = maxradius
+        minradius=qt.QLabel('Minimum')
+        self.min_radius_display=minradius
+        maxradius = qt.QLabel('Maximum')
+        self.max_radius_display = maxradius
 
         sublayout.addRow('Bins:',bins)
+        q_combobox = qt.QComboBox()
+        sublayout.addRow('Radial unit:', q_combobox)
+        q_combobox.addItems([u'q (\u212B)', u'q (nm\u207B\u00B9)'])
+        self.q_combo = q_combobox
         sublayout.addRow('Min Radius:', minradius)
         sublayout.addRow('Max Radius:', maxradius)
+        #FIX ME connect buttons to actions
+        self.set_min_button=qt.QPushButton('Set Min Radius')
+        self.set_max_button=qt.QPushButton('Set Max Radius')
+        self.set_min_button.setEnabled(False)
+        self.set_max_button.setEnabled(False)
+        self.set_max_button.setToolTip('Please Load PONI')
+        self.set_min_button.setToolTip('Please load PONI')
+        sublayout.addRow(self.set_min_button,self.set_max_button)
         layout.addWidget(integparams)
 
-        q_combobox=qt.QComboBox()
-        sublayout.addRow('Radial unit:',q_combobox)
-        q_combobox.addItems([u'q (\u212B)',u'q (nm\u207B\u00B9)'])
-        self.q_combo=q_combobox
 
         # dezinging paramteres
         dezingparameters=qt.QGroupBox('Dezinger Parameters')
@@ -221,7 +238,6 @@ class MyPlotWindow(qt.QMainWindow):
         centralWidget = qt.QWidget(self)
         centralWidget.setLayout(gridLayout)
         self.setCentralWidget(centralWidget)
-
         #legend dock
         plot = self._plot
         curveLegendsWidget = MyCurveLegendsWidget()
@@ -249,20 +265,66 @@ class MyPlotWindow(qt.QMainWindow):
     def set_q_min(self):
         plot=self.getPlotWidget()
         plot.setGraphCursor(True)
-        def mouse_tracker(dict):
+        def mouse_tracker1(dict):
             if dict['event']=='mouseClicked' and dict['button']=='left':
                 x,y=dict['x'],dict['y']
                 plot.setGraphCursor(False)
-                print(x,y)
-                #use this to draw circle
-                plot.setCallback()
-        self._plot.setCallback(callbackFunction=mouse_tracker)
+                centerx=int(self.beamcenterx)
+                centery=int(self.beamcentery)
+                self.min_radius=int(numpy.sqrt((x-centerx)**2+(y-centery)**2))
+                if self.min_radius<self.max_radius:
+                    self.min_radius_display.setText('%.2f' %(self.min_radius))
+                    plot.setCallback()
+                    if 'self.restricted_image' not in locals():
+                        self.restricted_image=numpy.copy(self.raw_image)
+                        plot_image(self,plot,self.restricted_image)
+                    else:
+                        plot_image(self, plot, self.restricted_image)
+                else:
+                    msg = qt.QMessageBox()
+                    msg.setWindowTitle("Error")
+                    msg.setText("Maximum is smaller than Minimum!")
+                    x = msg.exec_()
+        self._plot.setCallback(callbackFunction=mouse_tracker1)
 
+    def set_q_max(self):
+        plot = self.getPlotWidget()
+        plot.setGraphCursor(True)
+
+        def mouse_tracker2(dict):
+            if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
+                x, y = dict['x'], dict['y']
+                plot.setGraphCursor(False)
+                centerx = int(self.beamcenterx)
+                centery = int(self.beamcentery)
+                self.max_radius = int(numpy.sqrt((x - centerx) ** 2 + (y - centery) ** 2))
+                print(self.max_radius,self.min_radius)
+                if self.max_radius>self.min_radius:
+                    self.max_radius_display.setText('%.2f' % (self.max_radius))
+                    plot.setCallback()
+                    if 'self.restricted_image' not in locals():
+                        self.restricted_image = numpy.copy(self.raw_image)
+                        plot_image(self, plot, self.restricted_image)
+                    else:
+                        plot_image(self, plot, self.restricted_image)
+                else:
+                    msg = qt.QMessageBox()
+                    msg.setWindowTitle("Error")
+                    msg.setText("Maximum is smaller than Minimum!")
+                    x = msg.exec_()
+        self._plot.setCallback(callbackFunction=mouse_tracker2)
+
+
+    def set_center(self):
+        pass
 
     def getIntegrationParams(self):
         bins = int(self.bins.text())
-        minradius = float(self.minradius.text())
-        maxradius = float(self.maxradius.text())
+
+        #FIX-ME to change
+        minradius = 0
+        maxradius = 1
+
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
         dezing_thres=float(self.dezing_thres.text())
@@ -270,7 +332,7 @@ class MyPlotWindow(qt.QMainWindow):
         unit_dict = self.unitdict
         q_choice = unit_dict[q_choice]
         plot = self.getPlotWidget()
-        curve_plot(self,plot)
+        curve_plot_settings(self, plot)
         nxs_file_dict = self.nxs_file_dict
         datadict = self.idata
         loadedlist = self.loadedlistwidget
@@ -331,7 +393,7 @@ class MyPlotWindow(qt.QMainWindow):
         tw=self.tw
         plot = self.getPlotWidget()
         nxs_file_dict=self.nxs_file_dict
-        image_plot(plot)
+        image_plot_settings(plot)
         if tw.selectedItems()==[]:
             None
         else:
@@ -342,8 +404,8 @@ class MyPlotWindow(qt.QMainWindow):
                 except Exception:
                     im=fabio.open(filepath)
                     image=im.data
-                plot.addImage(image,resetzoom=True)
-                plot.resetZoom()
+            #    plot.addImage(image,resetzoom=True)
+            #    plot.resetZoom()
             if filepath.endswith('.nxs'):
                 None
             regexp=re.compile(r'(?:nxs - image ).*$')
@@ -351,9 +413,13 @@ class MyPlotWindow(qt.QMainWindow):
                 filename=filepath.split('.')[0].split('/')[-1]+'.nxs'
                 image_number=filepath.split('-')[-1]
                 image=nxs_file_dict[filename][filename+' -'+image_number]
-                plot.addImage(image, resetzoom=True)
-                plot.resetZoom()
-
+            #    plot.addImage(image, resetzoom=True)
+            #    plot.resetZoom()
+        try:
+            self.raw_image=image
+            plot_image(self,plot,self.raw_image)
+        except Exception:
+            None
 
     def plot_mul_curves_wrap(self):
         plot_mul_curves(self)

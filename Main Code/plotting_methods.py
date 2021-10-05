@@ -1,8 +1,10 @@
 from silx.gui import colors
 from silx.gui.qt import QMessageBox
 import numpy as np
+import cv2
+import numpy
 
-def curve_plot(self,plot):
+def curve_plot_settings(self, plot):
     plot.clear()
     q_choice = self.q_combo.currentText()
     plot.setGraphYLabel('Intensity')
@@ -13,7 +15,7 @@ def curve_plot(self,plot):
     # plot.setGraphGrid(which='both')
 
 
-def image_plot(plot):
+def image_plot_settings(plot):
     plot.clear()
     plot.getDefaultColormap().setName('jet')
     cm = colors.Colormap(name='jet', normalization='log')
@@ -24,6 +26,19 @@ def image_plot(plot):
     plot.setGraphYLabel('')
     plot.setGraphXLabel('')
 
+def plot_image(self,plot,image):
+    plot.clear()
+    if (self.max_radius==0 and self.min_radius==0):
+        plot.addImage(image, resetzoom=True)
+        self.displayed_image_range=plot.getDataRange()
+        self.max_radius=numpy.sqrt((self.displayed_image_range[0][1]-self.beamcenterx)**2+(self.displayed_image_range[1][1]-self.beamcentery)**2)
+    else:
+        centerx=int(self.beamcenterx)
+        centery=int(self.beamcentery)
+        cv2.circle(image,(centerx,centery),int(self.min_radius),(0, 0, 255),3)
+        cv2.circle(image, (centerx, centery), int(self.max_radius), (0, 0, 255), 3)
+        plot.addImage(image,resetzoom=True)
+        self.displayed_image_range = plot.getDataRange()
 
 def colorbank():
     bank = ['blue', 'red', 'black', 'green']
@@ -37,7 +52,7 @@ def plot_mul_curves(self):
     loadedlist = self.loadedlistwidget
     plot = self.getPlotWidget()
     plot.clear()
-    curve_plot(self,plot)
+    curve_plot_settings(self, plot)
     datadict=self.idata
     curvelist = [item.text() for item in loadedlist.selectedItems()]
     a = colorbank()

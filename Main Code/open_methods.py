@@ -11,6 +11,14 @@ def open_directory(self):
     tw=self.tw
     tw.clear()
     filepath = QFileDialog.getExistingDirectory(None, 'Select Folder')
+    try:
+        if self.imagepath !=filepath:
+            self.min_radius_display.setText('Minimum')
+            self.max_radius_display.setText('Maximum')
+            self.min_radius = 0
+            self.max_radius = 0
+    except Exception:
+        None
     directory_frame.setText('Directory :{}'.format(filepath))
     self.imagepath = filepath
     try:
@@ -59,6 +67,13 @@ def open_poni(self):
         self.beamcentery=self.fit2ddata['centerY']
         self.wavelength=data_dict['wavelength']
         self.distance=data_dict['dist']
+        self.set_min_button.setEnabled(True)
+        self.set_max_button.setEnabled(True)
+        self.setqminAction.setEnabled(True)
+        self.setcenter.setEnabled(True)
+        self.setqmaxAction.setEnabled(True)
+        self.set_max_button.setToolTip('')
+        self.set_min_button.setToolTip('')
     except Exception:
         None
 
