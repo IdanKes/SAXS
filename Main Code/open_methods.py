@@ -70,7 +70,6 @@ def open_poni(self):
         self.set_min_button.setEnabled(True)
         self.set_max_button.setEnabled(True)
         self.setqminAction.setEnabled(True)
-        self.setcenter.setEnabled(True)
         self.setqmaxAction.setEnabled(True)
         self.set_max_button.setToolTip('')
         self.set_min_button.setToolTip('')

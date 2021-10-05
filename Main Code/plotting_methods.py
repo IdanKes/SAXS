@@ -26,7 +26,7 @@ def image_plot_settings(plot):
     plot.setGraphYLabel('')
     plot.setGraphXLabel('')
 
-def plot_image(self,plot,image):
+def plot_restricted_radius_image(self, plot, image):
     plot.clear()
     if (self.max_radius==0 and self.min_radius==0):
         plot.addImage(image, resetzoom=True)
@@ -35,10 +35,17 @@ def plot_image(self,plot,image):
     else:
         centerx=int(self.beamcenterx)
         centery=int(self.beamcentery)
-        cv2.circle(image,(centerx,centery),int(self.min_radius),(0, 0, 255),3)
-        cv2.circle(image, (centerx, centery), int(self.max_radius), (0, 0, 255), 3)
+        cv2.circle(image,(centerx,centery),int(self.min_radius),(0, 255, 0),3)
+        cv2.circle(image, (centerx, centery), int(self.max_radius), (0, 255,0), 3)
         plot.addImage(image,resetzoom=True)
         self.displayed_image_range = plot.getDataRange()
+
+def plot_center_beam_image(self, plot, image):
+    plot.clear()
+    centerx = int(self.beamcenterx)
+    centery = int(self.beamcentery)
+    cv2.circle(image, (centerx, centery), 4, (255, 0, 0), -1)
+    plot.addImage(image, resetzoom=True)
 
 def colorbank():
     bank = ['blue', 'red', 'black', 'green']

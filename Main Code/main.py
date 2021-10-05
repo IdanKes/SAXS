@@ -11,7 +11,7 @@ from PyQt5 import QtWidgets
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
 from docking_bars import MyCurveLegendsWidget
 from open_methods import open_directory,open_poni,open_mask,open_nxs
-from plotting_methods import image_plot_settings,curve_plot_settings,plot_mul_curves,subtractcurves,plot_image
+from plotting_methods import image_plot_settings,curve_plot_settings,plot_mul_curves,subtractcurves,plot_restricted_radius_image,plot_center_beam_image
 from saving_methods import save_csv
 from integration_methods import full_integration,send_to_integration
 import pyFAI.units as unit
@@ -31,15 +31,16 @@ class MyPlotWindow(qt.QMainWindow):
         self.setqmaxAction = qt.QAction(self)
         self.setqmaxAction.setText("Set q max visually")
         self.setqmaxAction.triggered.connect(self.set_q_max)
-        self.setcenter = qt.QAction(self)
-        self.setcenter.setText("Set center visually")
+        self.setcenter_action = qt.QAction(self)
+        self.setcenter_action.triggered.connect(self.set_center)
+        self.setcenter_action.setText("Set center visually")
+        self._plot.addAction(self.setcenter_action)
         self._plot.addAction(self.setqminAction)
         self._plot.addAction(self.setqmaxAction)
-        self._plot.addAction(self.setcenter)
+
 
         self.setqminAction.setEnabled(False)
         self.setqmaxAction.setEnabled(False)
-        self.setcenter.setEnabled(False)
 
 
         #window menu bar
@@ -145,12 +146,14 @@ class MyPlotWindow(qt.QMainWindow):
         sublayout.addRow('Min Radius:', minradius)
         sublayout.addRow('Max Radius:', maxradius)
         #FIX ME connect buttons to actions
-        self.set_min_button=qt.QPushButton('Set Min Radius')
-        self.set_max_button=qt.QPushButton('Set Max Radius')
+        self.set_min_button=qt.QPushButton('Set Min Radius Manually')
+        self.set_max_button=qt.QPushButton('Set Max Radius Manually')
+        self.set_center_button=qt.QPushButton('Set Center Manually')
         self.set_min_button.setEnabled(False)
         self.set_max_button.setEnabled(False)
-        self.set_max_button.setToolTip('Please Load PONI')
-        self.set_min_button.setToolTip('Please load PONI')
+        self.set_max_button.setToolTip('Please Load PONI or set center Manually')
+        self.set_min_button.setToolTip('Please Load PONI or set center Manually')
+        sublayout.addRow(self.set_center_button)
         sublayout.addRow(self.set_min_button,self.set_max_button)
         layout.addWidget(integparams)
 
@@ -272,14 +275,14 @@ class MyPlotWindow(qt.QMainWindow):
                 centerx=int(self.beamcenterx)
                 centery=int(self.beamcentery)
                 self.min_radius=int(numpy.sqrt((x-centerx)**2+(y-centery)**2))
+                plot.setCallback()
                 if self.min_radius<self.max_radius:
                     self.min_radius_display.setText('%.2f' %(self.min_radius))
-                    plot.setCallback()
                     if 'self.restricted_image' not in locals():
                         self.restricted_image=numpy.copy(self.raw_image)
-                        plot_image(self,plot,self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image)
                     else:
-                        plot_image(self, plot, self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image)
                 else:
                     msg = qt.QMessageBox()
                     msg.setWindowTitle("Error")
@@ -297,16 +300,15 @@ class MyPlotWindow(qt.QMainWindow):
                 plot.setGraphCursor(False)
                 centerx = int(self.beamcenterx)
                 centery = int(self.beamcentery)
+                plot.setCallback()
                 self.max_radius = int(numpy.sqrt((x - centerx) ** 2 + (y - centery) ** 2))
-                print(self.max_radius,self.min_radius)
                 if self.max_radius>self.min_radius:
                     self.max_radius_display.setText('%.2f' % (self.max_radius))
-                    plot.setCallback()
                     if 'self.restricted_image' not in locals():
                         self.restricted_image = numpy.copy(self.raw_image)
-                        plot_image(self, plot, self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image)
                     else:
-                        plot_image(self, plot, self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image)
                 else:
                     msg = qt.QMessageBox()
                     msg.setWindowTitle("Error")
@@ -316,7 +318,24 @@ class MyPlotWindow(qt.QMainWindow):
 
 
     def set_center(self):
-        pass
+        plot = self.getPlotWidget()
+        plot.setGraphCursor(True)
+
+        def mouse_tracker3(dict):
+            if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
+                x, y = dict['x'], dict['y']
+                plot.setGraphCursor(False)
+                self.beamcenterx=x
+                self.beamcentery=y
+                plot.setCallback()
+                if 'self.restricted_image' not in locals():
+                    self.restricted_image = numpy.copy(self.raw_image)
+                    plot_center_beam_image(self, plot, self.restricted_image)
+                else:
+                    plot_center_beam_image(self, plot, self.restricted_image)
+
+        self._plot.setCallback(callbackFunction=mouse_tracker3)
+
 
     def getIntegrationParams(self):
         bins = int(self.bins.text())
@@ -417,7 +436,7 @@ class MyPlotWindow(qt.QMainWindow):
             #    plot.resetZoom()
         try:
             self.raw_image=image
-            plot_image(self,plot,self.raw_image)
+            plot_restricted_radius_image(self, plot, self.raw_image)
         except Exception:
             None
 
