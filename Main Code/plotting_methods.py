@@ -37,6 +37,7 @@ def plot_restricted_radius_image(self, plot, image):
         centery=int(self.beamcentery)
         cv2.circle(image,(centerx,centery),int(self.min_radius),(255, 255, 255),3)
         cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255,255), 3)
+        cv2.drawMarker(image, (centerx, centery), color=(255, 255, 255), markerSize=25, thickness=2)
         plot.addImage(image,resetzoom=True)
         self.displayed_image_range = plot.getDataRange()
 
@@ -44,8 +45,18 @@ def plot_center_beam_image(self, plot, image):
     plot.clear()
     centerx = int(self.beamcenterx)
     centery = int(self.beamcentery)
-    cv2.circle(image, (centerx, centery), 4, (255, 255, 255), -1)
+    self.beamcenterxdisplay.setText('%.2f' % centerx)
+    self.beamcenterydisplay.setText('%.2f' % centery)
+    cv2.drawMarker(image, (centerx, centery),color=(255,255,255),markerSize = 25,thickness=2)
+    cv2.circle(image, (centerx, centery), int(self.min_radius), (255, 255, 255), 3)
+    cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255, 255), 3)
     plot.addImage(image, resetzoom=True)
+    self.set_min_button.setEnabled(True)
+    self.set_max_button.setEnabled(True)
+    self.setqminAction.setEnabled(True)
+    self.setqmaxAction.setEnabled(True)
+    self.set_max_button.setToolTip('')
+    self.set_min_button.setToolTip('')
 #
 def colorbank():
     bank = ['blue', 'red', 'black', 'green']

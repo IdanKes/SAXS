@@ -5,7 +5,12 @@ import fabio
 import pyFAI
 from silx.gui.qt import QMessageBox, QFont
 from utils import dotdict
+from saving_methods import save_dat
 
+def convert_radius_to_q(self,radius):
+    def func(radius):
+        return (4*numpy.pi*(numpy.sin((numpy.arctan2(radius*self.pixel_size,self.distance)/2))))/(self.wavelength/10**(-10))
+    return func(radius)
 
 
 def full_integration(self,ai, image, mask, poni,dezing_thres, bins, minradius, maxradius, q_choice, datadict, nxs, nxs_file_dict):
@@ -22,31 +27,15 @@ def full_integration(self,ai, image, mask, poni,dezing_thres, bins, minradius, m
         img_array = image_data
         filename = image
     t0 = time.time()
-    #FIX-ME take into consideration the binning and radial range
-    if q_choice=="q_A^-1":
-        res = ai.sigma_clip_ng(img_array,
-                                bins,
-                                mask=mask,
-                                unit="q_A^-1",
-                                error_model='poisson',
-                                thres=dezing_thres,
-                                radial_range=(minradius, maxradius),
-                                method=("full","csr","opencl"))
-
-        new_res={'radial':res.radial,'intensity':res.intensity,'sigma':res.sigma}
-        new_res=dotdict(new_res)
-        datadict[filename] = new_res
-
-    else:
-        res = ai.sigma_clip_ng(img_array,
-                                bins,
-                                mask=mask,
-                                unit=q_choice,
-                                error_model='poisson',
-                                thres=dezing_thres,
-                                radial_range=(minradius, maxradius),
-                                method=("full", "csr", "opencl"))
-        datadict[filename] = res
+    res = ai.sigma_clip_ng(img_array,
+                            bins,
+                            mask=mask,
+                            unit=q_choice,
+                            error_model='poisson',
+                            thres=dezing_thres,
+                            method=("full", "csr", "opencl"))
+    datadict[filename] = res
+    save_dat(filename,self.imagepath,res,q_choice,minradius,maxradius)
     print(time.time()-t0)
 
 def send_to_integration(self, imagelist):
@@ -100,4 +89,4 @@ def send_to_integration(self, imagelist):
             #         res = datadict[image]
             #         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
             #                       linewidth=2)
-            i+=1
+            #i+=1

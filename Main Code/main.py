@@ -13,7 +13,7 @@ from docking_bars import MyCurveLegendsWidget
 from open_methods import open_directory,open_poni,open_mask,open_nxs
 from plotting_methods import image_plot_settings,curve_plot_settings,plot_mul_curves,subtractcurves,plot_restricted_radius_image,plot_center_beam_image
 from saving_methods import save_csv
-from integration_methods import full_integration,send_to_integration
+from integration_methods import full_integration,send_to_integration,convert_radius_to_q
 import pyFAI.units as unit
 
 
@@ -268,6 +268,10 @@ class MyPlotWindow(qt.QMainWindow):
     def set_q_min(self):
         plot=self.getPlotWidget()
         plot.setGraphCursor(True)
+        if 'self.restricted_image' not in locals():
+            is_restricted_flag=False
+        else:
+            is_restricted_flag = True
         def mouse_tracker1(dict):
             if dict['event']=='mouseClicked' and dict['button']=='left':
                 x,y=dict['x'],dict['y']
@@ -278,7 +282,7 @@ class MyPlotWindow(qt.QMainWindow):
                 plot.setCallback()
                 if self.min_radius<self.max_radius:
                     self.min_radius_display.setText('%.2f' %(self.min_radius))
-                    if 'self.restricted_image' not in locals():
+                    if not is_restricted_flag:
                         self.restricted_image=numpy.copy(self.raw_image)
                         plot_restricted_radius_image(self, plot, self.restricted_image)
                     else:
@@ -293,6 +297,10 @@ class MyPlotWindow(qt.QMainWindow):
     def set_q_max(self):
         plot = self.getPlotWidget()
         plot.setGraphCursor(True)
+        if 'self.restricted_image' not in locals():
+            is_restricted_flag=False
+        else:
+            is_restricted_flag = True
 
         def mouse_tracker2(dict):
             if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
@@ -304,7 +312,7 @@ class MyPlotWindow(qt.QMainWindow):
                 self.max_radius = int(numpy.sqrt((x - centerx) ** 2 + (y - centery) ** 2))
                 if self.max_radius>self.min_radius:
                     self.max_radius_display.setText('%.2f' % (self.max_radius))
-                    if 'self.restricted_image' not in locals():
+                    if not is_restricted_flag:
                         self.restricted_image = numpy.copy(self.raw_image)
                         plot_restricted_radius_image(self, plot, self.restricted_image)
                     else:
@@ -320,15 +328,19 @@ class MyPlotWindow(qt.QMainWindow):
     def set_center(self):
         plot = self.getPlotWidget()
         plot.setGraphCursor(True)
-
+        if 'self.restricted_image' not in locals():
+            is_restricted_flag = False
+        else:
+            is_restricted_flag = True
         def mouse_tracker3(dict):
             if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
                 x, y = dict['x'], dict['y']
                 plot.setGraphCursor(False)
                 self.beamcenterx=x
                 self.beamcentery=y
+                #FIX-ME need to add what happens if poni is in and then we change the center - need sto go in to the ai dict
                 plot.setCallback()
-                if 'self.restricted_image' not in locals():
+                if not is_restricted_flag:
                     self.restricted_image = numpy.copy(self.raw_image)
                     plot_center_beam_image(self, plot, self.restricted_image)
                 else:
@@ -339,17 +351,17 @@ class MyPlotWindow(qt.QMainWindow):
 
     def getIntegrationParams(self):
         bins = int(self.bins.text())
-
-        #FIX-ME to change
-        minradius = 0
-        maxradius = 1
-
+        minradius = convert_radius_to_q(self,self.min_radius)
+        maxradius = convert_radius_to_q(self,self.max_radius)
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
         dezing_thres=float(self.dezing_thres.text())
         q_choice = self.q_combo.currentText()
         unit_dict = self.unitdict
         q_choice = unit_dict[q_choice]
+        if q_choice=="q_nm^-1":
+            minradius*=10
+            maxradius*=10
         plot = self.getPlotWidget()
         curve_plot_settings(self, plot)
         nxs_file_dict = self.nxs_file_dict

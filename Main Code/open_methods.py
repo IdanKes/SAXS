@@ -49,7 +49,7 @@ def open_poni(self):
         ai = pyFAI.load(self.poni_file)
         data_dict = ai.get_config()
         detector=data_dict['detector']
-        #FIXME_data_dict bug from calib2
+        #FIXME_data_dict bug from calib2 - maybe from datadict?
         if detector=='Pilatus300k' or 'Pilatus6M':
             self.pixel_size=0.000172
         else:
@@ -61,10 +61,13 @@ def open_poni(self):
         self.distancedisplay.setText('%.2f' % data_dict['dist'])
         self.wavelengthdisplay.setText(str(data_dict['wavelength']))
         self.fit2ddata=ai.getFit2D()
-        self.beamcenterxdisplay.setText('%.2f' % self.fit2ddata['centerX'])
-        self.beamcenterydisplay.setText('%.2f' % self.fit2ddata['centerY'])
-        self.beamcenterx=self.fit2ddata['centerX']
-        self.beamcentery=self.fit2ddata['centerY']
+        if 'self.beamcenterx' ==0:
+            self.beamcenterx=self.fit2ddata['centerX']
+            self.beamcentery=self.fit2ddata['centerY']
+            self.beamcenterxdisplay.setText('%.2f' % self.fit2ddata['centerX'])
+            self.beamcenterydisplay.setText('%.2f' % self.fit2ddata['centerY'])
+        else:
+            ai.setFit2D(self.fit2ddata['directDist'],self.beamcenterx,self.beamcentery,self.fit2ddata['tilt'],self.fit2ddata['tiltPlanRotation'],self.fit2ddata['pixelX'],self.fit2ddata['pixelY'])
         self.wavelength=data_dict['wavelength']
         self.distance=data_dict['dist']
         self.set_min_button.setEnabled(True)
