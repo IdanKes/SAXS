@@ -89,4 +89,4 @@ def send_to_integration(self, imagelist):
             #         res = datadict[image]
             #         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
             #                       linewidth=2)
-            #i+=1
+            i+=1
