@@ -26,9 +26,9 @@ def image_plot_settings(plot):
     plot.setGraphYLabel('')
     plot.setGraphXLabel('')
 
-def plot_restricted_radius_image(self, plot, image):
+def plot_restricted_radius_image(self, plot, image,new_image):
     plot.clear()
-    if (self.max_radius==0 and self.min_radius==0):
+    if (self.max_radius==0 and self.min_radius==0) or new_image:
         plot.addImage(image, resetzoom=True)
         self.displayed_image_range=plot.getDataRange()
         self.max_radius=numpy.sqrt((self.displayed_image_range[0][1]-self.beamcenterx)**2+(self.displayed_image_range[1][1]-self.beamcentery)**2)

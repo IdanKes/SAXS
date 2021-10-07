@@ -47,6 +47,7 @@ def open_poni(self):
         self.poni_label.setText('loaded PONI file: /{}'.format(filepath[0].split("/")[-1]))
         self.poni_label.setFont(QFont('Segoe UI',9))
         ai = pyFAI.load(self.poni_file)
+        self.ai=ai
         data_dict = ai.get_config()
         detector=data_dict['detector']
         #FIXME_data_dict bug from calib2 - maybe from datadict?
@@ -61,7 +62,7 @@ def open_poni(self):
         self.distancedisplay.setText('%.2f' % data_dict['dist'])
         self.wavelengthdisplay.setText(str(data_dict['wavelength']))
         self.fit2ddata=ai.getFit2D()
-        if 'self.beamcenterx' ==0:
+        if self.beamcenterx ==0:
             self.beamcenterx=self.fit2ddata['centerX']
             self.beamcentery=self.fit2ddata['centerY']
             self.beamcenterxdisplay.setText('%.2f' % self.fit2ddata['centerX'])

@@ -41,7 +41,7 @@ def full_integration(self,ai, image, mask, poni,dezing_thres, bins, minradius, m
 def send_to_integration(self, imagelist):
     bins, minradius, maxradius, poni, mask, q_choice,dezing_thres, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
     tw = self.tw
-    ai = pyFAI.load(poni)
+    ai = self.ai
     loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
     if len(imagelist) == 0:
         msg = QMessageBox()

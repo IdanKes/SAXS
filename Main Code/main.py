@@ -284,9 +284,9 @@ class MyPlotWindow(qt.QMainWindow):
                     self.min_radius_display.setText('%.2f' %(self.min_radius))
                     if not is_restricted_flag:
                         self.restricted_image=numpy.copy(self.raw_image)
-                        plot_restricted_radius_image(self, plot, self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
                     else:
-                        plot_restricted_radius_image(self, plot, self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
                 else:
                     msg = qt.QMessageBox()
                     msg.setWindowTitle("Error")
@@ -314,9 +314,9 @@ class MyPlotWindow(qt.QMainWindow):
                     self.max_radius_display.setText('%.2f' % (self.max_radius))
                     if not is_restricted_flag:
                         self.restricted_image = numpy.copy(self.raw_image)
-                        plot_restricted_radius_image(self, plot, self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
                     else:
-                        plot_restricted_radius_image(self, plot, self.restricted_image)
+                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
                 else:
                     msg = qt.QMessageBox()
                     msg.setWindowTitle("Error")
@@ -339,12 +339,15 @@ class MyPlotWindow(qt.QMainWindow):
                 self.beamcenterx=x
                 self.beamcentery=y
                 #FIX-ME need to add what happens if poni is in and then we change the center - need sto go in to the ai dict
+                try:
+                    self.ai.setFit2D(self.fit2ddata['directDist'],self.beamcenterx,self.beamcentery,self.fit2ddata['tilt'],self.fit2ddata['tiltPlanRotation'],self.fit2ddata['pixelX'],self.fit2ddata['pixelY'])
+                    print(self.ai.getFit2D())
+                except Exception:
+                    None
                 plot.setCallback()
-                if not is_restricted_flag:
-                    self.restricted_image = numpy.copy(self.raw_image)
-                    plot_center_beam_image(self, plot, self.restricted_image)
-                else:
-                    plot_center_beam_image(self, plot, self.restricted_image)
+                self.restricted_image = numpy.copy(self.raw_image)
+                plot_center_beam_image(self, plot, self.restricted_image)
+                plot_center_beam_image(self, plot, self.restricted_image)
 
         self._plot.setCallback(callbackFunction=mouse_tracker3)
 
@@ -448,7 +451,7 @@ class MyPlotWindow(qt.QMainWindow):
             #    plot.resetZoom()
         try:
             self.raw_image=image
-            plot_restricted_radius_image(self, plot, self.raw_image)
+            plot_restricted_radius_image(self, plot, self.raw_image,True)
         except Exception:
             None
 
