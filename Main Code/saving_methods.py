@@ -24,7 +24,6 @@ def save_csv(self):
             df.rename(columns={0: q_choice, 1: 'Intesnsity', 2: 'Sigma_I'}, inplace=True)
             df.to_csv(filepath + '/{}_csv.csv'.format(curve), index=False)
 
-#FIX-ME change to self
 def save_dat(filename,filepath,res,q_choice):
     now = datetime.now()
     # dd/mm/YY H:M:S
