@@ -1,5 +1,6 @@
 import pandas as pd
 from silx.gui.qt import QMessageBox
+from datetime import datetime
 
 def save_csv(self):
     filepath = self.imagepath
@@ -24,20 +25,17 @@ def save_csv(self):
             df.to_csv(filepath + '/{}_csv.csv'.format(curve), index=False)
 
 #FIX-ME change to self
-def save_dat(filename,filepath,res,q_choice,minradius,maxradius):
-    data=pd.DataFrame.from_dict(res).T
-    data.rename(columns={0: q_choice, 1: 'Intesnsity', 2: 'Sigma_I'}, inplace=True)
-    if (minradius==0 and maxradius==0):#FIX ME max needs to be image dimensions and not zero! maybe pass self to function
-        print('{}/{}.dat'.format(filepath, filename))
-        #data.to_csv(r'{}/{}.dat'.format(filepath, filename))
-        pass
-    else:
-        pass
-        print('{}/{}.dat'.format(filepath, filename))
-        #restrict raiuds
-
-    #save comments with:
-    # with open('test2.csv', 'w') as f:
-    #     f.write('# This is my comment\n')
-    # df.to_csv('test2.csv', mode='a')
-    # f.close()
+def save_dat(filename,filepath,res,q_choice):
+    now = datetime.now()
+    # dd/mm/YY H:M:S
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    date_time = 'DAT file by SAXSII - Timestamp: {}'.format(dt_string)
+    res_to_save=res.copy()
+    res_to_save.columns = [f'radial-{q_choice}' if x == 'radial' else x for x in res_to_save.columns]
+    print(res.columns)
+    save_path='{}/{}.dat'.format(filepath, filename)
+    with open(save_path, 'w') as f:
+        f.write('# List of Vars\n')
+        f.write('#{}\n'.format(date_time))
+    res_to_save.to_csv(save_path, mode='a',index=False)
+    f.close()

@@ -42,7 +42,7 @@ def full_integration(self,ai, image, mask, poni,dezing_thres, bins, minradius, m
     df=df.dropna(axis=0)
     df.reset_index(inplace=True, drop=True)
     datadict[filename] = df
-    save_dat(filename,self.imagepath,df,q_choice,minradius,maxradius)
+    save_dat(filename,self.imagepath,df,q_choice)
     print(time.time()-t0)
 
 def send_to_integration(self, imagelist):
