@@ -147,8 +147,11 @@ class MyPlotWindow(qt.QMainWindow):
         sublayout.addRow('Max Radius:', maxradius)
         #FIX ME connect buttons to actions
         self.set_min_button=qt.QPushButton('Set Min Radius Manually')
+        self.set_min_button.clicked.connect(self.set_q_min)
         self.set_max_button=qt.QPushButton('Set Max Radius Manually')
+        self.set_max_button.clicked.connect(self.set_q_max)
         self.set_center_button=qt.QPushButton('Set Center Manually')
+        self.set_center_button.clicked.connect(self.set_center)
         self.set_min_button.setEnabled(False)
         self.set_max_button.setEnabled(False)
         self.set_max_button.setToolTip('Please Load PONI or set center Manually')
@@ -182,6 +185,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.idata={}
         self.unitdict={u'q (nm\u207B\u00B9)':"q_nm^-1",u'q (\u212B)':"q_A^-1"}
         self.nxs_file_dict = {}
+        self.plotted_before_list=[]
 
         #Data Fields
         options2 = qt.QGroupBox('Calibration Data')
@@ -268,10 +272,6 @@ class MyPlotWindow(qt.QMainWindow):
     def set_q_min(self):
         plot=self.getPlotWidget()
         plot.setGraphCursor(True)
-        if 'self.restricted_image' not in locals():
-            is_restricted_flag=False
-        else:
-            is_restricted_flag = True
         def mouse_tracker1(dict):
             if dict['event']=='mouseClicked' and dict['button']=='left':
                 x,y=dict['x'],dict['y']
@@ -282,11 +282,8 @@ class MyPlotWindow(qt.QMainWindow):
                 plot.setCallback()
                 if self.min_radius<self.max_radius:
                     self.min_radius_display.setText('%.2f' %(self.min_radius))
-                    if not is_restricted_flag:
-                        self.restricted_image=numpy.copy(self.raw_image)
-                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
-                    else:
-                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
+                    self.restricted_image=numpy.copy(self.raw_image)
+                    plot_restricted_radius_image(self, plot, self.restricted_image,False)
                 else:
                     msg = qt.QMessageBox()
                     msg.setWindowTitle("Error")
@@ -297,11 +294,6 @@ class MyPlotWindow(qt.QMainWindow):
     def set_q_max(self):
         plot = self.getPlotWidget()
         plot.setGraphCursor(True)
-        if 'self.restricted_image' not in locals():
-            is_restricted_flag=False
-        else:
-            is_restricted_flag = True
-
         def mouse_tracker2(dict):
             if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
                 x, y = dict['x'], dict['y']
@@ -312,11 +304,8 @@ class MyPlotWindow(qt.QMainWindow):
                 self.max_radius = int(numpy.sqrt((x - centerx) ** 2 + (y - centery) ** 2))
                 if self.max_radius>self.min_radius:
                     self.max_radius_display.setText('%.2f' % (self.max_radius))
-                    if not is_restricted_flag:
-                        self.restricted_image = numpy.copy(self.raw_image)
-                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
-                    else:
-                        plot_restricted_radius_image(self, plot, self.restricted_image,False)
+                    self.restricted_image = numpy.copy(self.raw_image)
+                    plot_restricted_radius_image(self, plot, self.restricted_image,False)
                 else:
                     msg = qt.QMessageBox()
                     msg.setWindowTitle("Error")
@@ -328,10 +317,6 @@ class MyPlotWindow(qt.QMainWindow):
     def set_center(self):
         plot = self.getPlotWidget()
         plot.setGraphCursor(True)
-        if 'self.restricted_image' not in locals():
-            is_restricted_flag = False
-        else:
-            is_restricted_flag = True
         def mouse_tracker3(dict):
             if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
                 x, y = dict['x'], dict['y']
@@ -346,7 +331,6 @@ class MyPlotWindow(qt.QMainWindow):
                     None
                 plot.setCallback()
                 self.restricted_image = numpy.copy(self.raw_image)
-                plot_center_beam_image(self, plot, self.restricted_image)
                 plot_center_beam_image(self, plot, self.restricted_image)
 
         self._plot.setCallback(callbackFunction=mouse_tracker3)
@@ -438,8 +422,6 @@ class MyPlotWindow(qt.QMainWindow):
                 except Exception:
                     im=fabio.open(filepath)
                     image=im.data
-            #    plot.addImage(image,resetzoom=True)
-            #    plot.resetZoom()
             if filepath.endswith('.nxs'):
                 None
             regexp=re.compile(r'(?:nxs - image ).*$')
@@ -447,13 +429,16 @@ class MyPlotWindow(qt.QMainWindow):
                 filename=filepath.split('.')[0].split('/')[-1]+'.nxs'
                 image_number=filepath.split('-')[-1]
                 image=nxs_file_dict[filename][filename+' -'+image_number]
-            #    plot.addImage(image, resetzoom=True)
-            #    plot.resetZoom()
-        try:
+        if filepath not in self.plotted_before_list:
+            self.plotted_before_list.append(filepath)
             self.raw_image=image
-            plot_restricted_radius_image(self, plot, self.raw_image,True)
-        except Exception:
-            None
+            plot_restricted_radius_image(self, plot, image,True)
+        else:
+            try:
+                self.raw_image = numpy.copy(image)
+                plot_restricted_radius_image(self, plot, image,False)
+            except Exception:
+                None
 
     def plot_mul_curves_wrap(self):
         plot_mul_curves(self)

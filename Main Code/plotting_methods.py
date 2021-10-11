@@ -16,7 +16,6 @@ def curve_plot_settings(self, plot):
 
 
 def image_plot_settings(plot):
-    plot.clear()
     plot.getDefaultColormap().setName('jet')
     cm = colors.Colormap(name='jet', normalization='log')
     plot.setDefaultColormap(cm)
@@ -28,7 +27,7 @@ def image_plot_settings(plot):
 
 def plot_restricted_radius_image(self, plot, image,new_image):
     plot.clear()
-    if (self.max_radius==0 and self.min_radius==0) or new_image:
+    if new_image:
         plot.addImage(image, resetzoom=True)
         self.displayed_image_range=plot.getDataRange()
         self.max_radius=numpy.sqrt((self.displayed_image_range[0][1]-self.beamcenterx)**2+(self.displayed_image_range[1][1]-self.beamcentery)**2)
@@ -39,6 +38,7 @@ def plot_restricted_radius_image(self, plot, image,new_image):
         cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255,255), 3)
         cv2.drawMarker(image, (centerx, centery), color=(255, 255, 255), markerSize=25, thickness=2)
         plot.addImage(image,resetzoom=True)
+        image_plot_settings(plot)
         self.displayed_image_range = plot.getDataRange()
 
 def plot_center_beam_image(self, plot, image):
@@ -51,12 +51,13 @@ def plot_center_beam_image(self, plot, image):
     cv2.circle(image, (centerx, centery), int(self.min_radius), (255, 255, 255), 3)
     cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255, 255), 3)
     plot.addImage(image, resetzoom=True)
+    image_plot_settings(plot)
     self.set_min_button.setEnabled(True)
     self.set_max_button.setEnabled(True)
     self.setqminAction.setEnabled(True)
     self.setqmaxAction.setEnabled(True)
-    self.set_max_button.setToolTip('')
-    self.set_min_button.setToolTip('')
+    self.set_max_button.setToolTip('You can also right click the plot!')
+    self.set_min_button.setToolTip('You can also right click the plot!')
 #
 def colorbank():
     bank = ['blue', 'red', 'black', 'green']

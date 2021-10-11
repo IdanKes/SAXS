@@ -2,6 +2,8 @@ import time
 import numpy
 import re
 import fabio
+import numpy as np
+import pandas as pd
 import pyFAI
 from silx.gui.qt import QMessageBox, QFont
 from utils import dotdict
@@ -34,8 +36,13 @@ def full_integration(self,ai, image, mask, poni,dezing_thres, bins, minradius, m
                             error_model='poisson',
                             thres=dezing_thres,
                             method=("full", "csr", "opencl"))
-    datadict[filename] = res
-    save_dat(filename,self.imagepath,res,q_choice,minradius,maxradius)
+
+    df = pd.DataFrame.from_dict({'radial': res.radial, 'intensity': res.intensity, 'sigma': res.sigma},orient='columns')
+    df = df[(df.radial > minradius) & (df.radial < maxradius)]
+    df=df.dropna(axis=0)
+    df.reset_index(inplace=True, drop=True)
+    datadict[filename] = df
+    save_dat(filename,self.imagepath,df,q_choice,minradius,maxradius)
     print(time.time()-t0)
 
 def send_to_integration(self, imagelist):
@@ -55,38 +62,28 @@ def send_to_integration(self, imagelist):
             pvalue=int((i/length)*100)
             self.progressbar.setValue(pvalue)
             self.progressbar.setFont(QFont('Segoe UI',9))
-            if image not in loadeditemsTextList:
-                if (image.endswith('.tiff') or image.endswith('.tif')):
-                    full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                          maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=False,
-                                          nxs_file_dict=nxs_file_dict)
+            #if image not in loadeditemsTextList:
+            if (image.endswith('.tiff') or image.endswith('.tif')):
+                full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                      maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=False,
+                                      nxs_file_dict=nxs_file_dict)
 
-                    filename = image.split('.')[0]
-                    res = datadict[filename]
-                    plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
-                                  linewidth=2)
+                filename = image.split('.')[0]
+                res = datadict[filename]
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
+                              linewidth=2)
+                if image not in loadeditemsTextList:
                     loadedlist.addItem(image)
-                regexp = re.compile(r'(?:nxs - image ).*$')
-                if regexp.search(image):
-                    full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                          maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=True,
-                                          nxs_file_dict=nxs_file_dict)
-                    res = datadict[image]
-                    plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
-                                  linewidth=2)
+            regexp = re.compile(r'(?:nxs - image ).*$')
+            if regexp.search(image):
+                full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                      maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=True,
+                                      nxs_file_dict=nxs_file_dict)
+                res = datadict[image]
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
+                              linewidth=2)
+                if image not in loadeditemsTextList:
                     loadedlist.addItem(image)
-                if image.endswith('.nxs'):
-                    None
-
-            # else:
-            #     if (image.endswith('.tiff') or image.endswith('.tif')):
-            #         filename = image.split('.')[0]
-            #         res = datadict[filename]
-            #         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
-            #                       linewidth=2)
-            #     regexp = re.compile(r'(?:nxs - image ).*$')
-            #     if regexp.search(image):
-            #         res = datadict[image]
-            #         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
-            #                       linewidth=2)
-            i+=1
+            if image.endswith('.nxs'):
+                None
+        i+=1
