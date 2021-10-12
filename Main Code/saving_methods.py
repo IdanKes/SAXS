@@ -20,9 +20,8 @@ def save_csv(self):
         x = msg.exec_()
     else:
         for curve in curvenames:
-            df = pd.read_csv(r'{}/{}.dat'.format(filepath, curve), header=None, sep="\s+", skiprows=23)
-            df.rename(columns={0: q_choice, 1: 'Intesnsity', 2: 'Sigma_I'}, inplace=True)
-            df.to_csv(filepath + '/{}_csv.csv'.format(curve), index=False)
+            df = pd.read_csv(r'{}/{}.dat'.format(filepath, curve), header=None, sep=",", skiprows=2)
+            df.to_csv(filepath + '/{}_csv.csv'.format(curve), index=False,header=False)
 
 def save_dat(filename,filepath,res,q_choice):
     now = datetime.now()
@@ -31,7 +30,6 @@ def save_dat(filename,filepath,res,q_choice):
     date_time = 'DAT file by SAXSII - Timestamp: {}'.format(dt_string)
     res_to_save=res.copy()
     res_to_save.columns = [f'radial-{q_choice}' if x == 'radial' else x for x in res_to_save.columns]
-    print(res.columns)
     save_path='{}/{}.dat'.format(filepath, filename)
     with open(save_path, 'w') as f:
         f.write('# List of Vars\n')

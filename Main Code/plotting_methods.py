@@ -13,9 +13,11 @@ def curve_plot_settings(self, plot):
     plot.setKeepDataAspectRatio(False)
     plot.setAxesDisplayed(True)
     # plot.setGraphGrid(which='both')
+    self.toolbar1.toggleViewAction().trigger()
+    self.toolbar2.toggleViewAction().trigger()
 
 
-def image_plot_settings(plot):
+def image_plot_settings(self,plot):
     plot.getDefaultColormap().setName('jet')
     cm = colors.Colormap(name='jet', normalization='log')
     plot.setDefaultColormap(cm)
@@ -24,6 +26,9 @@ def image_plot_settings(plot):
     plot.setGraphGrid(which=None)
     plot.setGraphYLabel('')
     plot.setGraphXLabel('')
+    self.toolbar1.toggleViewAction().trigger()
+    self.toolbar2.toggleViewAction().trigger()
+
 
 def plot_restricted_radius_image(self, plot, image,new_image):
     plot.clear()
@@ -38,7 +43,7 @@ def plot_restricted_radius_image(self, plot, image,new_image):
         cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255,255), 3)
         cv2.drawMarker(image, (centerx, centery), color=(255, 255, 255), markerSize=25, thickness=2)
         plot.addImage(image,resetzoom=True)
-        image_plot_settings(plot)
+        #image_plot_settings(self,plot)
         self.displayed_image_range = plot.getDataRange()
 
 def plot_center_beam_image(self, plot, image):
@@ -51,7 +56,7 @@ def plot_center_beam_image(self, plot, image):
     cv2.circle(image, (centerx, centery), int(self.min_radius), (255, 255, 255), 3)
     cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255, 255), 3)
     plot.addImage(image, resetzoom=True)
-    image_plot_settings(plot)
+    #image_plot_settings(self,plot)
     self.set_min_button.setEnabled(True)
     self.set_max_button.setEnabled(True)
     self.setqminAction.setEnabled(True)

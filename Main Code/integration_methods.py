@@ -67,7 +67,6 @@ def send_to_integration(self, imagelist):
                 full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
                                       maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=False,
                                       nxs_file_dict=nxs_file_dict)
-
                 filename = image.split('.')[0]
                 res = datadict[filename]
                 plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
@@ -86,4 +85,4 @@ def send_to_integration(self, imagelist):
                     loadedlist.addItem(image)
             if image.endswith('.nxs'):
                 None
-        i+=1
+            i+=1

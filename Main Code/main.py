@@ -79,15 +79,23 @@ class MyPlotWindow(qt.QMainWindow):
         self.position=position
         toolBar1 = qt.QToolBar("xy", self)
         self.toolbar1=toolBar1
+        self.toolbar1.toggleViewAction().trigger()
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
+
+        self.toolbar2=qt.QToolBar('xy2',self)
+        self.addToolBar(qt.Qt.BottomToolBarArea, self.toolbar2)
+        position2=tools.PositionInfo(plot=self._plot,
+                                      converters=[('Radius from Beam Center (px)', lambda x, y: numpy.sqrt((x-self.beamcenterx)**2 + (y-self.beamcentery)**2)),
+                                                  ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
+                                                  (u'q (\u212B)', lambda x,y: x),('Intensity', lambda x, y: y)])
+        self.toolbar2.addWidget(position2)
+        self.toolbar2.toggleViewAction().trigger()
 
         progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
         progressbar.setFixedSize(310,30)
         progressbar.setTextVisible(False)
         self.progressbar=progressbar
-        #self.toolbar1_action=qt.QAction(toolBar1.addWidget(position))
         toolBar1.addWidget(position)
-        #self.toolbar1_action.setVisible(False)
         toolBar1.addWidget(progressbar)
 
         #window parameters
@@ -364,6 +372,7 @@ class MyPlotWindow(qt.QMainWindow):
         im = Image.open('files/saxsii.jpeg')
         im=numpy.flip(im,0)
         plot.addImage(im)
+        self.toolbar2.toggleViewAction().trigger()
 
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])
@@ -411,7 +420,7 @@ class MyPlotWindow(qt.QMainWindow):
         tw=self.tw
         plot = self.getPlotWidget()
         nxs_file_dict=self.nxs_file_dict
-        image_plot_settings(plot)
+        image_plot_settings(self,plot)
         if tw.selectedItems()==[]:
             None
         else:
@@ -439,6 +448,7 @@ class MyPlotWindow(qt.QMainWindow):
                 plot_restricted_radius_image(self, plot, image,False)
             except Exception:
                 None
+
 
     def plot_mul_curves_wrap(self):
         plot_mul_curves(self)
