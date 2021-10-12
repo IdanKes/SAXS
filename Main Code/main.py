@@ -89,7 +89,7 @@ class MyPlotWindow(qt.QMainWindow):
                                                   ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
                                                   (u'q (\u212B)', lambda x,y: x),('Intensity', lambda x, y: y)])
         self.toolbar2.addWidget(position2)
-        self.toolbar2.toggleViewAction().trigger()
+        self.toolbar2.setVisible(False)
 
         progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
         progressbar.setFixedSize(310,30)
@@ -372,7 +372,7 @@ class MyPlotWindow(qt.QMainWindow):
         im = Image.open('files/saxsii.jpeg')
         im=numpy.flip(im,0)
         plot.addImage(im)
-        self.toolbar2.toggleViewAction().trigger()
+
 
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])

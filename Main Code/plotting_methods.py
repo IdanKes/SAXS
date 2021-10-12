@@ -13,8 +13,8 @@ def curve_plot_settings(self, plot):
     plot.setKeepDataAspectRatio(False)
     plot.setAxesDisplayed(True)
     # plot.setGraphGrid(which='both')
-    self.toolbar1.toggleViewAction().trigger()
-    self.toolbar2.toggleViewAction().trigger()
+    self.toolbar1.setVisible(False)
+    self.toolbar2.setVisible(True)
 
 
 def image_plot_settings(self,plot):
@@ -26,8 +26,8 @@ def image_plot_settings(self,plot):
     plot.setGraphGrid(which=None)
     plot.setGraphYLabel('')
     plot.setGraphXLabel('')
-    self.toolbar1.toggleViewAction().trigger()
-    self.toolbar2.toggleViewAction().trigger()
+    self.toolbar1.setVisible(True)
+    self.toolbar2.setVisible(False)
 
 
 def plot_restricted_radius_image(self, plot, image,new_image):
