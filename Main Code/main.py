@@ -333,7 +333,6 @@ class MyPlotWindow(qt.QMainWindow):
                 #FIX-ME need to add what happens if poni is in and then we change the center - need sto go in to the ai dict
                 try:
                     self.ai.setFit2D(self.fit2ddata['directDist'],self.beamcenterx,self.beamcentery,self.fit2ddata['tilt'],self.fit2ddata['tiltPlanRotation'],self.fit2ddata['pixelX'],self.fit2ddata['pixelY'])
-                    print(self.ai.getFit2D())
                 except Exception:
                     None
                 plot.setCallback()
