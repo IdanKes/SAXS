@@ -136,7 +136,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(button)
         layout.addWidget(mask_label)
 
-        #integration paramteres
+        #integration paramteres and buttons
         integparams = qt.QGroupBox('Integration Parameters')
         sublayout=qt.QFormLayout(integparams)
         bins=qt.QLineEdit('1000')
@@ -153,7 +153,6 @@ class MyPlotWindow(qt.QMainWindow):
         self.q_combo = q_combobox
         sublayout.addRow('Min Radius:', minradius)
         sublayout.addRow('Max Radius:', maxradius)
-        #FIX ME connect buttons to actions
         self.set_min_button=qt.QPushButton('Set Min Radius Manually')
         self.set_min_button.clicked.connect(self.set_q_min)
         self.set_max_button=qt.QPushButton('Set Max Radius Manually')
@@ -438,16 +437,19 @@ class MyPlotWindow(qt.QMainWindow):
                 filename=filepath.split('.')[0].split('/')[-1]+'.nxs'
                 image_number=filepath.split('-')[-1]
                 image=nxs_file_dict[filename][filename+' -'+image_number]
-        if filepath not in self.plotted_before_list:
-            self.plotted_before_list.append(filepath)
-            self.raw_image=image
-            plot_restricted_radius_image(self, plot, image,True)
-        else:
-            try:
-                self.raw_image = numpy.copy(image)
-                plot_restricted_radius_image(self, plot, image,False)
-            except Exception:
-                None
+        try:
+            if filepath not in self.plotted_before_list:
+                self.plotted_before_list.append(filepath)
+                self.raw_image=image
+                plot_restricted_radius_image(self, plot, image,True)
+            else:
+                try:
+                    self.raw_image = numpy.copy(image)
+                    plot_restricted_radius_image(self, plot, image,False)
+                except Exception:
+                    None
+        except Exception:
+            None
 
 
     def plot_mul_curves_wrap(self):

@@ -43,6 +43,8 @@ def open_directory(self):
 def open_poni(self):
     try:
         filepath = QFileDialog.getOpenFileName(self,filter='*.poni')
+        print('/'.join(filepath[0].split('/')[:-1]))
+        print(self.frame.text().split('Directory :')[-1])
         self.poni_file=filepath[0]
         self.poni_label.setText('loaded PONI file: /{}'.format(filepath[0].split("/")[-1]))
         self.poni_label.setFont(QFont('Segoe UI',9))
@@ -62,7 +64,7 @@ def open_poni(self):
         self.distancedisplay.setText('%.2f' % data_dict['dist'])
         self.wavelengthdisplay.setText(str(data_dict['wavelength']))
         self.fit2ddata=ai.getFit2D()
-        if self.beamcenterx ==0:
+        if self.beamcenterx ==0 or '/'.join(filepath[0].split('/')[:-1])!=self.frame.text().split('Directory :')[-1]:
             self.beamcenterx=self.fit2ddata['centerX']
             self.beamcentery=self.fit2ddata['centerY']
             self.beamcenterxdisplay.setText('%.2f' % self.fit2ddata['centerX'])

@@ -32,7 +32,7 @@ def save_dat(filename,filepath,res,q_choice):
     res_to_save.columns = [f'radial-{q_choice}' if x == 'radial' else x for x in res_to_save.columns]
     save_path='{}/{}.dat'.format(filepath, filename)
     with open(save_path, 'w') as f:
-        f.write('# List of Vars\n')
+       # f.write('# List of Vars\n')
         f.write('#{}\n'.format(date_time))
     res_to_save.to_csv(save_path, mode='a',index=False)
     f.close()
