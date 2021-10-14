@@ -34,9 +34,13 @@ class MyPlotWindow(qt.QMainWindow):
         self.setcenter_action = qt.QAction(self)
         self.setcenter_action.triggered.connect(self.set_center)
         self.setcenter_action.setText("Set center visually")
+        self.addmarker_action = qt.QAction(self)
+        self.addmarker_action.setText("Add Marker")
+        self.addmarker_action.triggered.connect(self.add_marker)
         self._plot.addAction(self.setcenter_action)
         self._plot.addAction(self.setqminAction)
         self._plot.addAction(self.setqmaxAction)
+        self._plot.addAction(self.addmarker_action)
 
 
         self.setqminAction.setEnabled(False)
@@ -66,7 +70,7 @@ class MyPlotWindow(qt.QMainWindow):
         toolButton.setCheckable(True)
         toolButton.setIcon(qt.QIcon('files/toggle.ico'))
         plot_tool_bar.addWidget(toolButton)
-        toolButton.clicked.connect(self.check)
+        #toolButton.clicked.connect(self.check)
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
@@ -265,16 +269,17 @@ class MyPlotWindow(qt.QMainWindow):
         return self._plot
 
     #chekcing toolbar manipulations, use Qaction /toggling and putting the other toolbar - USED FOR LEGEND TOGGLE
-    def check(self):
-        newpositions = [('X', lambda x, y: x)]
-        for func in self.position.getConverters()[1:]:
-            newpositions.append(func)
-        new_positon=tools.PositionInfo(plot=self._plot,converters=newpositions)
-        #self.toolbar1_action.setVisible(False)
-        #self.toolbar1.removeAction(self.toolbar1_action)
-        #self.toolbar1.addWidget(new_positon)
-        self.toolbar1.toggleViewAction().trigger()
-        #http://www.silx.org/doc/silx/latest/modules/gui/plot/actions/examples.html
+    # def check(self):
+    #     newpositions = [('X', lambda x, y: x)]
+    #     for func in self.position.getConverters()[1:]:
+    #         newpositions.append(func)
+    #     new_positon=tools.PositionInfo(plot=self._plot,converters=newpositions)
+    #     #self.toolbar1_action.setVisible(False)
+    #     #self.toolbar1.removeAction(self.toolbar1_action)
+    #     #self.toolbar1.addWidget(new_positon)
+    #     self.toolbar1.toggleViewAction().trigger()
+    #     #http://www.silx.org/doc/silx/latest/modules/gui/plot/actions/examples.html
+
 
     def set_q_min(self):
         plot=self.getPlotWidget()
@@ -330,7 +335,6 @@ class MyPlotWindow(qt.QMainWindow):
                 plot.setGraphCursor(False)
                 self.beamcenterx=x
                 self.beamcentery=y
-                #FIX-ME need to add what happens if poni is in and then we change the center - need sto go in to the ai dict
                 try:
                     self.ai.setFit2D(self.fit2ddata['directDist'],self.beamcenterx,self.beamcentery,self.fit2ddata['tilt'],self.fit2ddata['tiltPlanRotation'],self.fit2ddata['pixelX'],self.fit2ddata['pixelY'])
                 except Exception:
@@ -341,6 +345,16 @@ class MyPlotWindow(qt.QMainWindow):
 
         self._plot.setCallback(callbackFunction=mouse_tracker3)
 
+    def add_marker(self):
+        plot = self.getPlotWidget()
+        plot.setGraphCursor(True)
+        def mouse_tracker4(dict):
+            if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
+                x, y = dict['x'], dict['y']
+                print(x,y)
+                plot.setGraphCursor(False)
+                plot.setCallback()
+        self._plot.setCallback(callbackFunction=mouse_tracker4)
 
     def getIntegrationParams(self):
         bins = int(self.bins.text())
