@@ -14,7 +14,7 @@ from open_methods import open_directory,open_poni,open_mask,open_nxs
 from plotting_methods import image_plot_settings,curve_plot_settings,plot_mul_curves,subtractcurves,plot_restricted_radius_image,plot_center_beam_image
 from saving_methods import save_csv
 from integration_methods import full_integration,send_to_integration,convert_radius_to_q
-import pyFAI.units as unit
+
 
 
 class MyPlotWindow(qt.QMainWindow):
