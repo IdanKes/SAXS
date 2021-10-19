@@ -41,8 +41,6 @@ class MyPlotWindow(qt.QMainWindow):
         self._plot.addAction(self.setqminAction)
         self._plot.addAction(self.setqmaxAction)
         self._plot.addAction(self.addmarker_action)
-
-
         self.setqminAction.setEnabled(False)
         self.setqmaxAction.setEnabled(False)
 
