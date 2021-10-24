@@ -72,6 +72,7 @@ class MyPlotWindow(qt.QMainWindow):
         plot_tool_bar.addWidget(toolButton)
         #toolButton.clicked.connect(self.check)
         #
+        #
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
