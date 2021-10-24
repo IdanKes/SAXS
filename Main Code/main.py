@@ -462,7 +462,7 @@ class MyPlotWindow(qt.QMainWindow):
                     None
         except Exception:
             None
-
+#
 
     def plot_mul_curves_wrap(self):
         plot_mul_curves(self)
