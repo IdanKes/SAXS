@@ -71,6 +71,7 @@ class MyPlotWindow(qt.QMainWindow):
         toolButton.setIcon(qt.QIcon('files/toggle.ico'))
         plot_tool_bar.addWidget(toolButton)
         #toolButton.clicked.connect(self.check)
+        #
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
