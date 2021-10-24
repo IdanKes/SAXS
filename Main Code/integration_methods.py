@@ -2,13 +2,20 @@ import time
 import numpy
 import re
 import fabio
+import numpy as np
+import pandas as pd
 import pyFAI
 from silx.gui.qt import QMessageBox, QFont
 from utils import dotdict
+from saving_methods import save_dat
+
+def convert_radius_to_q(self,radius):
+    def func(radius):
+        return (4*numpy.pi*(numpy.sin((numpy.arctan2(radius*self.pixel_size,self.distance)/2))))/(self.wavelength/10**(-10))
+    return func(radius)
 
 
-
-def full_integration(self,ai, image, mask, poni, bins, minradius, maxradius, q_choice, datadict, nxs, nxs_file_dict):
+def full_integration(self,ai, image, mask, poni,dezing_thres, bins, minradius, maxradius, q_choice, datadict, nxs, nxs_file_dict):
     if not nxs:
         imagefolder = self.imagepath
         imagepath = imagefolder + '/' + image
@@ -22,36 +29,26 @@ def full_integration(self,ai, image, mask, poni, bins, minradius, maxradius, q_c
         img_array = image_data
         filename = image
     t0 = time.time()
-    #FIX-ME angstrem bug
-    if q_choice=="q_A^-1":
-        res = ai.integrate1d_ng(img_array,
-                                bins,
-                                mask=mask,
-                                unit="q_A^-1",
-                                filename="{}/{}.dat".format(imagefolder, filename),
-                                error_model='poisson',
-                                radial_range=(minradius, maxradius))
+    res = ai.sigma_clip_ng(img_array,
+                            bins,
+                            mask=mask,
+                            unit=q_choice,
+                            error_model='poisson',
+                            thres=dezing_thres,
+                            method=("full", "csr", "opencl"))
 
-        new_radial=numpy.true_divide(res.radial, 10)
-        new_res={'radial':new_radial,'intensity':res.intensity,'sigma':res.sigma}
-        new_res=dotdict(new_res)
-        datadict[filename] = new_res
-
-    else:
-        res = ai.integrate1d_ng(img_array,
-                                bins,
-                                mask=mask,
-                                unit=q_choice,
-                                filename="{}/{}.dat".format(imagefolder, filename),
-                                error_model='poisson',
-                                radial_range=(minradius, maxradius))
-        datadict[filename] = res
+    df = pd.DataFrame.from_dict({'radial': res.radial, 'intensity': res.intensity, 'sigma': res.sigma},orient='columns')
+    df = df[(df.radial > minradius) & (df.radial < maxradius)]
+    df=df.dropna(axis=0)
+    df.reset_index(inplace=True, drop=True)
+    datadict[filename] = df
+    save_dat(filename,self.imagepath,df,q_choice)
     print(time.time()-t0)
 
 def send_to_integration(self, imagelist):
-    bins, minradius, maxradius, poni, mask, q_choice, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
+    bins, minradius, maxradius, poni, mask, q_choice,dezing_thres, nxs_file_dict, datadict, loadedlist,plot=self.getIntegrationParams()
     tw = self.tw
-    ai = pyFAI.load(poni)
+    ai = self.ai
     loadeditemsTextList = [str(loadedlist.item(i).text()) for i in range(loadedlist.count())]
     if len(imagelist) == 0:
         msg = QMessageBox()
@@ -65,38 +62,27 @@ def send_to_integration(self, imagelist):
             pvalue=int((i/length)*100)
             self.progressbar.setValue(pvalue)
             self.progressbar.setFont(QFont('Segoe UI',9))
-            if image not in loadeditemsTextList:
-                if (image.endswith('.tiff') or image.endswith('.tif')):
-                    full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                          maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=False,
-                                          nxs_file_dict=nxs_file_dict)
-
-                    filename = image.split('.')[0]
-                    res = datadict[filename]
-                    plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
-                                  linewidth=2)
+            #if image not in loadeditemsTextList:
+            if (image.endswith('.tiff') or image.endswith('.tif')):
+                full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                      maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=False,
+                                      nxs_file_dict=nxs_file_dict)
+                filename = image.split('.')[0]
+                res = datadict[filename]
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
+                              linewidth=2)
+                if image not in loadeditemsTextList:
                     loadedlist.addItem(image)
-                regexp = re.compile(r'(?:nxs - image ).*$')
-                if regexp.search(image):
-                    full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
-                                          maxradius=maxradius, q_choice=q_choice, datadict=datadict, nxs=True,
-                                          nxs_file_dict=nxs_file_dict)
-                    res = datadict[image]
-                    plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
-                                  linewidth=2)
+            regexp = re.compile(r'(?:nxs - image ).*$')
+            if regexp.search(image):
+                full_integration(self,ai=ai,image=image, poni=poni, mask=mask.data, bins=bins, minradius=minradius,
+                                      maxradius=maxradius, q_choice=q_choice,dezing_thres=dezing_thres, datadict=datadict, nxs=True,
+                                      nxs_file_dict=nxs_file_dict)
+                res = datadict[image]
+                plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
+                              linewidth=2)
+                if image not in loadeditemsTextList:
                     loadedlist.addItem(image)
-                if image.endswith('.nxs'):
-                    None
-
-            # else:
-            #     if (image.endswith('.tiff') or image.endswith('.tif')):
-            #         filename = image.split('.')[0]
-            #         res = datadict[filename]
-            #         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(filename),
-            #                       linewidth=2)
-            #     regexp = re.compile(r'(?:nxs - image ).*$')
-            #     if regexp.search(image):
-            #         res = datadict[image]
-            #         plot.addCurve(x=res.radial, y=res.intensity, yerror=res.sigma, legend='{}'.format(image),
-            #                       linewidth=2)
+            if image.endswith('.nxs'):
+                None
             i+=1

@@ -11,10 +11,12 @@ from PyQt5 import QtWidgets
 from silx.gui.widgets.BoxLayoutDockWidget import BoxLayoutDockWidget
 from docking_bars import MyCurveLegendsWidget
 from open_methods import open_directory,open_poni,open_mask,open_nxs
-from plotting_methods import image_plot,curve_plot,plot_mul_curves,subtractcurves
+from plotting_methods import image_plot_settings,curve_plot_settings,plot_mul_curves,subtractcurves,plot_restricted_radius_image,plot_center_beam_image
 from saving_methods import save_csv
-from integration_methods import full_integration,send_to_integration
-import pyFAI.units as unit
+from integration_methods import full_integration,send_to_integration,convert_radius_to_q
+import logging
+logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -23,28 +25,52 @@ class MyPlotWindow(qt.QMainWindow):
         super(MyPlotWindow, self).__init__(parent)
 
         # Creating a PlotWidget
-        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=False,yInverted=False,autoScale=False,mask=False,save=False)
+        self._plot = PlotWindow(parent=self,roi=False,print_=False,control=False,yInverted=False,autoScale=False,mask=False,save=False, curveStyle=False,copy=False,grid=False)
+        self._plot.setContextMenuPolicy(qt.Qt.ActionsContextMenu)
+        self.setqminAction = qt.QAction(self)
+        self.setqminAction.setText("Set q min visually")
+        self.setqminAction.triggered.connect(self.set_q_min)
+        self.setqmaxAction = qt.QAction(self)
+        self.setqmaxAction.setText("Set q max visually")
+        self.setqmaxAction.triggered.connect(self.set_q_max)
+        self.setcenter_action = qt.QAction(self)
+        self.setcenter_action.triggered.connect(self.set_center)
+        self.setcenter_action.setText("Set center visually")
+        self.addmarker_action = qt.QAction(self)
+        self.addmarker_action.setText("Add Marker")
+        self.addmarker_action.triggered.connect(self.add_marker)
+        self._plot.addAction(self.setcenter_action)
+        self._plot.addAction(self.setqminAction)
+        self._plot.addAction(self.setqmaxAction)
+        self._plot.addAction(self.addmarker_action)
+        self.setqminAction.setEnabled(False)
+        self.setqmaxAction.setEnabled(False)
 
-        #menu bar
+
+        #window menu bar
         menuBar = self.menuBar()
         fileMenu = qt.QMenu("&More Options", self)
         menuBar.addMenu(fileMenu)
         self.save_csv_action = qt.QAction('Save Integrated Data as CSV File...',self)
         fileMenu.addAction(self.save_csv_action)
         self.save_csv_action.triggered.connect(self.save_csv_wrap)
+
+        #global parameters
         self.beamcenterx=0
         self.beamcentery=0
         self.wavelength=0
         self.distance=0
         self.pixel_size=0
+        self.min_radius=0
+        self.max_radius=0
 
         #add functionalities to toolbar
         plot_tool_bar=self.getPlotWidget().toolBar()
         toolButton = qt.QToolButton(self)
         toolButton.setCheckable(True)
+        toolButton.setIcon(qt.QIcon('files/toggle.ico'))
         plot_tool_bar.addWidget(toolButton)
-        toolButton.clicked.connect(self.check)
-        #
+        #toolButton.clicked.connect(self.check)
 
         #Bottom Toolbar
         position = tools.PositionInfo(plot=self._plot,
@@ -52,19 +78,26 @@ class MyPlotWindow(qt.QMainWindow):
                                                   ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
                                                   ('X Position (px)', lambda x,y: x),
                                                   ('Y Position (px)', lambda x, y: y),
-                                                ('q (a^-1)', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)*(self.pixel_size))**2+ ((x-self.beamcenterx)*(self.pixel_size))**2),self.distance)/2))))/(self.wavelength/10**(-10))))])
+                                                (u'q (\u212B)', lambda x, y: ((4*numpy.pi*(numpy.sin((numpy.arctan2(numpy.sqrt(((y-self.beamcentery)*(self.pixel_size))**2+ ((x-self.beamcenterx)*(self.pixel_size))**2),self.distance)/2))))/(self.wavelength/10**(-10))))])
 
         self.position=position
         toolBar1 = qt.QToolBar("xy", self)
         self.toolbar1=toolBar1
+        self.toolbar1.toggleViewAction().trigger()
         self.addToolBar(qt.Qt.BottomToolBarArea,toolBar1)
+
+        self.toolbar2=qt.QToolBar('xy2',self)
+        self.addToolBar(qt.Qt.BottomToolBarArea, self.toolbar2)
+        position2=tools.PositionInfo(plot=self._plot,
+                                      converters=[(u'q (\u212B)', lambda x,y: x),('Intensity', lambda x, y: y)])
+        self.toolbar2.addWidget(position2)
+        self.toolbar2.setVisible(False)
+
         progressbar=qt.QProgressBar(self,objectName="GreenProgressBar")
-        progressbar.setFixedSize(290,30)
+        progressbar.setFixedSize(310,30)
         progressbar.setTextVisible(False)
         self.progressbar=progressbar
-        #self.toolbar1_action=qt.QAction(toolBar1.addWidget(position))
         toolBar1.addWidget(position)
-        #self.toolbar1_action.setVisible(False)
         toolBar1.addWidget(progressbar)
 
         #window parameters
@@ -105,32 +138,47 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(button)
         layout.addWidget(mask_label)
 
-        #integration paramteres
+        #integration paramteres and buttons
         integparams = qt.QGroupBox('Integration Parameters')
         sublayout=qt.QFormLayout(integparams)
         bins=qt.QLineEdit('1000')
         self.bins=bins
-        minradius=qt.QLineEdit('0')
-        self.minradius=minradius
-        maxradius = qt.QLineEdit('10')
-        self.maxradius = maxradius
+        minradius=qt.QLabel('Minimum')
+        self.min_radius_display=minradius
+        maxradius = qt.QLabel('Maximum')
+        self.max_radius_display = maxradius
 
         sublayout.addRow('Bins:',bins)
+        q_combobox = qt.QComboBox()
+        sublayout.addRow('Radial unit:', q_combobox)
+        q_combobox.addItems([u'q (\u212B)', u'q (nm\u207B\u00B9)'])
+        self.q_combo = q_combobox
         sublayout.addRow('Min Radius:', minradius)
         sublayout.addRow('Max Radius:', maxradius)
+        self.set_min_button=qt.QPushButton('Set Min Radius Manually')
+        self.set_min_button.clicked.connect(self.set_q_min)
+        self.set_max_button=qt.QPushButton('Set Max Radius Manually')
+        self.set_max_button.clicked.connect(self.set_q_max)
+        self.set_center_button=qt.QPushButton('Set Center Manually')
+        self.set_center_button.clicked.connect(self.set_center)
+        self.set_min_button.setEnabled(False)
+        self.set_max_button.setEnabled(False)
+        self.set_max_button.setToolTip('Please Load PONI or set center Manually')
+        self.set_min_button.setToolTip('Please Load PONI or set center Manually')
+        sublayout.addRow(self.set_center_button)
+        sublayout.addRow(self.set_min_button,self.set_max_button)
         layout.addWidget(integparams)
 
-        q_combobox=qt.QComboBox()
-        sublayout.addRow('Radial unit:',q_combobox)
-        q_combobox.addItems(['q (nm^-1)','q (A^-1)'])
-        self.q_combo=q_combobox
 
+        # dezinging paramteres
         dezingparameters=qt.QGroupBox('Dezinger Parameters')
         sub_layout_2=qt.QFormLayout(dezingparameters)
         sigma_thres=qt.QLineEdit('5')
-        sub_layout_2.addRow('Sigma Threshold:', sigma_thres)
+        sub_layout_2.addRow('Sigma Clip Threshold:', sigma_thres)
         layout.addWidget(dezingparameters)
+        self.dezing_thres=sigma_thres
 
+        #Integration Buttons
         buttonsWidget = qt.QWidget()
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
         buttons = ['Integrate Selected','Integrate All']
@@ -144,8 +192,10 @@ class MyPlotWindow(qt.QMainWindow):
 
         #Integration Data dicts
         self.idata={}
-        self.unitdict={'q (nm^-1)':"q_nm^-1",'q (A^-1)':"q_A^-1"}
+        self.unitdict={u'q (nm\u207B\u00B9)':"q_nm^-1",u'q (\u212B)':"q_A^-1"}
         self.nxs_file_dict = {}
+        self.plotted_before_list=[]
+        self.image_dict={}
 
         #Data Fields
         options2 = qt.QGroupBox('Calibration Data')
@@ -156,10 +206,10 @@ class MyPlotWindow(qt.QMainWindow):
         distance=qt.QLineEdit('0')
         beamcenterx=qt.QLineEdit('0')
         beamcentery=qt.QLineEdit('0')
-        layout2.addRow('Distance:', distance)
-        layout2.addRow('Wavelength:', wavelength)
-        layout2.addRow('Beam Center X:',beamcenterx)
-        layout2.addRow('Beam Center Y:', beamcentery)
+        layout2.addRow('Distance (m):', distance)
+        layout2.addRow(u'Wavelength (\u212B):', wavelength)
+        layout2.addRow('Beam Center X (px):',beamcenterx)
+        layout2.addRow('Beam Center Y (px):', beamcentery)
         self.wavelengthdisplay=wavelength
         self.distancedisplay=distance
         self.beamcenterxdisplay=beamcenterx
@@ -173,6 +223,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout3.addWidget(loadedlistwidget)
         self.loadedlistwidget=loadedlistwidget
         loadedlistwidget.itemSelectionChanged.connect(self.plot_mul_curves_wrap)
+        loadedlistwidget.itemDoubleClicked.connect(self.plot_mul_curves_wrap)
         loadedlistwidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
         tools1d=qt.QLabel('1d Tools')
@@ -204,7 +255,6 @@ class MyPlotWindow(qt.QMainWindow):
         centralWidget = qt.QWidget(self)
         centralWidget.setLayout(gridLayout)
         self.setCentralWidget(centralWidget)
-
         #legend dock
         plot = self._plot
         curveLegendsWidget = MyCurveLegendsWidget()
@@ -217,32 +267,113 @@ class MyPlotWindow(qt.QMainWindow):
     def getPlotWidget(self):
         return self._plot
 
-    #chekcing toolbar manipulations, use Qaction /toggling and putting the other toolbar
-    def check(self):
-        newpositions = [('X', lambda x, y: x)]
-        for func in self.position.getConverters()[1:]:
-            newpositions.append(func)
-        new_positon=tools.PositionInfo(plot=self._plot,converters=newpositions)
-        #self.toolbar1_action.setVisible(False)
-        #self.toolbar1.removeAction(self.toolbar1_action)
-        #self.toolbar1.addWidget(new_positon)
-        self.toolbar1.toggleViewAction().trigger()
+    #chekcing toolbar manipulations, use Qaction /toggling and putting the other toolbar - USED FOR LEGEND TOGGLE
+    # def check(self):
+    #     newpositions = [('X', lambda x, y: x)]
+    #     for func in self.position.getConverters()[1:]:
+    #         newpositions.append(func)
+    #     new_positon=tools.PositionInfo(plot=self._plot,converters=newpositions)
+    #     #self.toolbar1_action.setVisible(False)
+    #     #self.toolbar1.removeAction(self.toolbar1_action)
+    #     #self.toolbar1.addWidget(new_positon)
+    #     self.toolbar1.toggleViewAction().trigger()
+    #     #http://www.silx.org/doc/silx/latest/modules/gui/plot/actions/examples.html
+
+
+    def set_q_min(self):
+        plot=self.getPlotWidget()
+        plot.setGraphCursor(True)
+        def mouse_tracker1(dict):
+            if dict['event']=='mouseClicked' and dict['button']=='left':
+                x,y=dict['x'],dict['y']
+                plot.setGraphCursor(False)
+                centerx=int(self.beamcenterx)
+                centery=int(self.beamcentery)
+                self.min_radius=int(numpy.sqrt((x-centerx)**2+(y-centery)**2))
+                plot.setCallback()
+                if self.min_radius<self.max_radius:
+                    self.min_radius_display.setText('%.2f' %(self.min_radius))
+                    self.restricted_image=numpy.copy(self.raw_image)
+                    plot_restricted_radius_image(self, plot, self.restricted_image,False)
+                else:
+                    msg = qt.QMessageBox()
+                    msg.setWindowTitle("Error")
+                    msg.setText("Maximum is smaller than Minimum!")
+                    x = msg.exec_()
+        self._plot.setCallback(callbackFunction=mouse_tracker1)
+
+    def set_q_max(self):
+        plot = self.getPlotWidget()
+        plot.setGraphCursor(True)
+        def mouse_tracker2(dict):
+            if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
+                x, y = dict['x'], dict['y']
+                plot.setGraphCursor(False)
+                centerx = int(self.beamcenterx)
+                centery = int(self.beamcentery)
+                plot.setCallback()
+                self.max_radius = int(numpy.sqrt((x - centerx) ** 2 + (y - centery) ** 2))
+                if self.max_radius>self.min_radius:
+                    self.max_radius_display.setText('%.2f' % (self.max_radius))
+                    self.restricted_image = numpy.copy(self.raw_image)
+                    plot_restricted_radius_image(self, plot, self.restricted_image,False)
+                else:
+                    msg = qt.QMessageBox()
+                    msg.setWindowTitle("Error")
+                    msg.setText("Maximum is smaller than Minimum!")
+                    x = msg.exec_()
+        self._plot.setCallback(callbackFunction=mouse_tracker2)
+
+
+    def set_center(self):
+        plot = self.getPlotWidget()
+        plot.setGraphCursor(True)
+        def mouse_tracker3(dict):
+            if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
+                x, y = dict['x'], dict['y']
+                plot.setGraphCursor(False)
+                self.beamcenterx=x
+                self.beamcentery=y
+                try:
+                    self.ai.setFit2D(self.fit2ddata['directDist'],self.beamcenterx,self.beamcentery,self.fit2ddata['tilt'],self.fit2ddata['tiltPlanRotation'],self.fit2ddata['pixelX'],self.fit2ddata['pixelY'])
+                except Exception:
+                    None
+                plot.setCallback()
+                self.restricted_image = numpy.copy(self.raw_image)
+                plot_center_beam_image(self, plot, self.restricted_image)
+
+        self._plot.setCallback(callbackFunction=mouse_tracker3)
+
+    def add_marker(self):
+        plot = self.getPlotWidget()
+        plot.setGraphCursor(True)
+        def mouse_tracker4(dict):
+            if dict['event'] == 'mouseClicked' and dict['button'] == 'left':
+                x, y = dict['x'], dict['y']
+                plot.addMarker(x,y,'marker 1','marker1')
+                plot.setGraphCursor(False)
+                plot.setCallback()
+        self._plot.setCallback(callbackFunction=mouse_tracker4)
 
     def getIntegrationParams(self):
         bins = int(self.bins.text())
-        minradius = float(self.minradius.text())
-        maxradius = float(self.maxradius.text())
+        minradius = convert_radius_to_q(self,self.min_radius)
+        maxradius = convert_radius_to_q(self,self.max_radius)
         poni = self.poni_file
         mask = fabio.open(self.mask_file)
+        dezing_thres=float(self.dezing_thres.text())
         q_choice = self.q_combo.currentText()
         unit_dict = self.unitdict
         q_choice = unit_dict[q_choice]
+        if q_choice=="q_nm^-1":
+            minradius*=10
+            maxradius*=10
         plot = self.getPlotWidget()
-        curve_plot(self,plot)
+        curve_plot_settings(self, plot)
         nxs_file_dict = self.nxs_file_dict
         datadict = self.idata
         loadedlist = self.loadedlistwidget
-        return bins,minradius,maxradius,poni,mask,q_choice,nxs_file_dict,datadict,loadedlist,plot
+        return bins,minradius,maxradius,poni,mask,q_choice,dezing_thres,nxs_file_dict,datadict,loadedlist,plot
 
 
     def showInitalImage(self):
@@ -252,6 +383,7 @@ class MyPlotWindow(qt.QMainWindow):
         im = Image.open('files/saxsii.jpeg')
         im=numpy.flip(im,0)
         plot.addImage(im)
+
 
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])
@@ -299,7 +431,7 @@ class MyPlotWindow(qt.QMainWindow):
         tw=self.tw
         plot = self.getPlotWidget()
         nxs_file_dict=self.nxs_file_dict
-        image_plot(plot)
+        image_plot_settings(self,plot)
         if tw.selectedItems()==[]:
             None
         else:
@@ -310,8 +442,6 @@ class MyPlotWindow(qt.QMainWindow):
                 except Exception:
                     im=fabio.open(filepath)
                     image=im.data
-                plot.addImage(image,resetzoom=True)
-                plot.resetZoom()
             if filepath.endswith('.nxs'):
                 None
             regexp=re.compile(r'(?:nxs - image ).*$')
@@ -319,9 +449,20 @@ class MyPlotWindow(qt.QMainWindow):
                 filename=filepath.split('.')[0].split('/')[-1]+'.nxs'
                 image_number=filepath.split('-')[-1]
                 image=nxs_file_dict[filename][filename+' -'+image_number]
-                plot.addImage(image, resetzoom=True)
-                plot.resetZoom()
-
+        try:
+            if filepath not in self.plotted_before_list:
+                self.plotted_before_list.append(filepath)
+                self.raw_image=image
+                plot_restricted_radius_image(self, plot, image,True)
+            else:
+                try:
+                    self.raw_image = numpy.copy(image)
+                    plot_restricted_radius_image(self, plot, image,False)
+                except Exception:
+                    None
+        except Exception:
+            None
+#
 
     def plot_mul_curves_wrap(self):
         plot_mul_curves(self)
@@ -343,6 +484,7 @@ def main():
     window.setAttribute(qt.Qt.WA_DeleteOnClose)
     window.showInitalImage()
     window.showMaximized()
+    logging.error('Saxsii Inittialized')
     app.exec()
 
 if __name__ == '__main__':

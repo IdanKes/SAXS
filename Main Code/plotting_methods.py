@@ -1,8 +1,10 @@
 from silx.gui import colors
 from silx.gui.qt import QMessageBox
 import numpy as np
+import cv2
+import numpy
 
-def curve_plot(self,plot):
+def curve_plot_settings(self, plot):
     plot.clear()
     q_choice = self.q_combo.currentText()
     plot.setGraphYLabel('Intensity')
@@ -11,10 +13,11 @@ def curve_plot(self,plot):
     plot.setKeepDataAspectRatio(False)
     plot.setAxesDisplayed(True)
     # plot.setGraphGrid(which='both')
+    self.toolbar1.setVisible(False)
+    self.toolbar2.setVisible(True)
 
 
-def image_plot(plot):
-    plot.clear()
+def image_plot_settings(self,plot):
     plot.getDefaultColormap().setName('jet')
     cm = colors.Colormap(name='jet', normalization='log')
     plot.setDefaultColormap(cm)
@@ -23,8 +26,44 @@ def image_plot(plot):
     plot.setGraphGrid(which=None)
     plot.setGraphYLabel('')
     plot.setGraphXLabel('')
+    self.toolbar1.setVisible(True)
+    self.toolbar2.setVisible(False)
 
 
+def plot_restricted_radius_image(self, plot, image,new_image):
+    plot.clear()
+    if new_image:
+        plot.addImage(image, resetzoom=True)
+        self.displayed_image_range=plot.getDataRange()
+        self.max_radius=numpy.sqrt((self.displayed_image_range[0][1]-self.beamcenterx)**2+(self.displayed_image_range[1][1]-self.beamcentery)**2)
+    else:
+        centerx=int(self.beamcenterx)
+        centery=int(self.beamcentery)
+        cv2.circle(image,(centerx,centery),int(self.min_radius),(255, 255, 255),3)
+        cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255,255), 3)
+        cv2.drawMarker(image, (centerx, centery), color=(255, 255, 255), markerSize=25, thickness=2)
+        plot.addImage(image,resetzoom=True)
+        #image_plot_settings(self,plot)
+        self.displayed_image_range = plot.getDataRange()
+
+def plot_center_beam_image(self, plot, image):
+    plot.clear()
+    centerx = int(self.beamcenterx)
+    centery = int(self.beamcentery)
+    self.beamcenterxdisplay.setText('%.2f' % centerx)
+    self.beamcenterydisplay.setText('%.2f' % centery)
+    cv2.drawMarker(image, (centerx, centery),color=(255,255,255),markerSize = 25,thickness=2)
+    cv2.circle(image, (centerx, centery), int(self.min_radius), (255, 255, 255), 3)
+    cv2.circle(image, (centerx, centery), int(self.max_radius), (255, 255, 255), 3)
+    plot.addImage(image, resetzoom=True)
+    #image_plot_settings(self,plot)
+    self.set_min_button.setEnabled(True)
+    self.set_max_button.setEnabled(True)
+    self.setqminAction.setEnabled(True)
+    self.setqmaxAction.setEnabled(True)
+    self.set_max_button.setToolTip('You can also right click the plot!')
+    self.set_min_button.setToolTip('You can also right click the plot!')
+#
 def colorbank():
     bank = ['blue', 'red', 'black', 'green']
     i = 0
@@ -37,7 +76,7 @@ def plot_mul_curves(self):
     loadedlist = self.loadedlistwidget
     plot = self.getPlotWidget()
     plot.clear()
-    curve_plot(self,plot)
+    curve_plot_settings(self, plot)
     datadict=self.idata
     curvelist = [item.text() for item in loadedlist.selectedItems()]
     a = colorbank()
