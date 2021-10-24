@@ -14,6 +14,8 @@ from open_methods import open_directory,open_poni,open_mask,open_nxs
 from plotting_methods import image_plot_settings,curve_plot_settings,plot_mul_curves,subtractcurves,plot_restricted_radius_image,plot_center_beam_image
 from saving_methods import save_csv
 from integration_methods import full_integration,send_to_integration,convert_radius_to_q
+import logging
+logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 
 
@@ -88,7 +90,6 @@ class MyPlotWindow(qt.QMainWindow):
         self.addToolBar(qt.Qt.BottomToolBarArea, self.toolbar2)
         position2=tools.PositionInfo(plot=self._plot,
                                       converters=[(u'q (\u212B)', lambda x,y: x),('Intensity', lambda x, y: y)])
-        #('Radius from Beam Center (px)', lambda x, y: numpy.sqrt((x-self.beamcenterx)**2 + (y-self.beamcentery)**2)), ('Angle', lambda x, y: numpy.degrees(numpy.arctan2(y-self.beamcentery, x-self.beamcenterx))),
         self.toolbar2.addWidget(position2)
         self.toolbar2.setVisible(False)
 
@@ -177,7 +178,7 @@ class MyPlotWindow(qt.QMainWindow):
         layout.addWidget(dezingparameters)
         self.dezing_thres=sigma_thres
 
-
+        #Integration Buttons
         buttonsWidget = qt.QWidget()
         buttonsWidgetLayout = qt.QHBoxLayout(buttonsWidget)
         buttons = ['Integrate Selected','Integrate All']
@@ -194,7 +195,7 @@ class MyPlotWindow(qt.QMainWindow):
         self.unitdict={u'q (nm\u207B\u00B9)':"q_nm^-1",u'q (\u212B)':"q_A^-1"}
         self.nxs_file_dict = {}
         self.plotted_before_list=[]
-        self.markers={}
+        self.image_dict={}
 
         #Data Fields
         options2 = qt.QGroupBox('Calibration Data')
@@ -483,6 +484,7 @@ def main():
     window.setAttribute(qt.Qt.WA_DeleteOnClose)
     window.showInitalImage()
     window.showMaximized()
+    logging.error('Saxsii Inittialized')
     app.exec()
 
 if __name__ == '__main__':
