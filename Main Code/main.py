@@ -16,7 +16,9 @@ from saving_methods import save_csv
 from integration_methods import full_integration,send_to_integration,convert_radius_to_q
 import logging
 logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-
+import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -115,12 +117,25 @@ class MyPlotWindow(qt.QMainWindow):
         button.clicked.connect(self.open_directory_wrap)
         layout.addWidget(button)
         tw=qt.QTreeWidget(self)
-        layout.addWidget(tw)
+        layout.addWidget(tw,1)
         self.tw=tw
         tw.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         tw.setHeaderHidden(True)
         tw.itemSelectionChanged.connect(self.ShowImage)
         tw.itemDoubleClicked.connect(self.ShowImage)
+        track_check_box=qt.QCheckBox(self)
+        track_check_box.clicked.connect(self.track_folder)
+        track_check_box.setText('Track Folder Changes')
+        track_check_box.setEnabled(False)
+        self.track_check_box = track_check_box
+        update_image_check_box = qt.QCheckBox(self)
+        update_image_check_box.setText('Show last created image')
+        update_image_check_box.setEnabled(False)
+        self.update_image_check_box=update_image_check_box
+        check_box_group = qt.QGroupBox()
+        checkbox_sublayout = qt.QFormLayout(check_box_group)
+        checkbox_sublayout.addRow(track_check_box,update_image_check_box)
+        layout.addWidget(check_box_group)
         button = qt.QPushButton("Load PONI File", self)
         button.clicked.connect(self.open_poni_wrap)
         layout.addWidget(button)
@@ -384,6 +399,21 @@ class MyPlotWindow(qt.QMainWindow):
         im=numpy.flip(im,0)
         plot.addImage(im)
 
+    def track_folder(self):
+        if self.track_check_box.isChecked()==True:
+            self.update_image_check_box.setEnabled(True)
+            class MonitorFolder(FileSystemEventHandler):
+                def on_created(self, event):
+                    print(event.src_path)
+            event_handler = MonitorFolder()
+            observer = Observer()
+            observer.schedule(event_handler, path=self.imagepath, recursive=True)
+            print("Monitoring started")
+            observer.start()
+        if self.track_check_box.isChecked()==False:
+            self.update_image_check_box.setEnabled(False)
+            print("need to be implemented")
+            #observer.stop()
 
     def InitiateCalibration(self):
         subprocess.run(["pyFAI-calib2"])

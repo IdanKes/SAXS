@@ -25,6 +25,7 @@ def open_directory(self):
         logging.error('tried to open a new directory and something went wrong...')
     directory_frame.setText('Directory :{}'.format(filepath))
     self.imagepath = filepath
+    self.track_check_box.setEnabled(True)
     try:
         onlyfiles = [f for f in listdir(filepath) if
                      isfile(join(filepath, f)) and (f.endswith('.tif') or f.endswith('.tiff') or f.endswith('.nxs'))]
