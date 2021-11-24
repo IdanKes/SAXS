@@ -18,7 +18,9 @@ import logging
 logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 import time
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler,FileCreatedEvent
+from silx.gui.qt import QTreeWidgetItem
+import pathlib
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -402,14 +404,43 @@ class MyPlotWindow(qt.QMainWindow):
     def track_folder(self):
         if self.track_check_box.isChecked()==True:
             self.update_image_check_box.setEnabled(True)
+            tw=self.tw
+            update_image=self.update_image_check_box
             class MonitorFolder(FileSystemEventHandler):
                 def on_created(self, event):
-                    print(event.src_path)
+                    if isinstance(event, FileCreatedEvent):
+                        file = pathlib.Path(event.src_path)
+                    if str(event.src_path).endswith('.tiff') or str(event.src_path).endswith('.tif'):
+                        treeitem = QTreeWidgetItem([file.name])
+                        tw.insertTopLevelItems(0,[treeitem])
+                        if update_image:
+                            tw.itemAt(0,0).setSelected(True)
+                            #MyPlotWindow.ShowImage()
+                            # filepath = event.src_path
+                            # print(filepath)
+                            # if (filepath.endswith('.tiff') or filepath.endswith('.tif')):
+                            #     try:
+                            #         image = io.imread(filepath)  # convert to fabio?
+                            #         im = fabio.open(filepath)
+                            #         image = im.data
+                            #         plot=MyPlotWindow.getPlotWidget()
+                            #         plot.addImage(image)
+                            #     except Exception:
+                            #         pass
+
+
+                def on_deleted(self,event):
+                    pass
+
+                def on_modified(self, event):
+                    pass
+
             event_handler = MonitorFolder()
             observer = Observer()
             observer.schedule(event_handler, path=self.imagepath, recursive=True)
-            print("Monitoring started")
+            logging.error('Monitoring started')
             observer.start()
+
         if self.track_check_box.isChecked()==False:
             self.update_image_check_box.setEnabled(False)
             print("need to be implemented")
@@ -457,6 +488,7 @@ class MyPlotWindow(qt.QMainWindow):
     def open_nxs_wrap(self,path):
         open_nxs(self,path)
 
+
     def ShowImage(self):
         tw=self.tw
         plot = self.getPlotWidget()
@@ -469,9 +501,11 @@ class MyPlotWindow(qt.QMainWindow):
             if (filepath.endswith('.tiff') or filepath.endswith('.tif')):
                 try:
                     image = io.imread(filepath) #convert to fabio?
+                    im = fabio.open(filepath)
+                    image = im.data
                 except Exception:
-                    im=fabio.open(filepath)
-                    image=im.data
+                    logging.error('Something went wrong with loading the image')
+
             if filepath.endswith('.nxs'):
                 None
             regexp=re.compile(r'(?:nxs - image ).*$')
