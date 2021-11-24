@@ -407,33 +407,32 @@ class MyPlotWindow(qt.QMainWindow):
             tw=self.tw
             update_image=self.update_image_check_box
             class MonitorFolder(FileSystemEventHandler):
-                def on_created(self, event):
-                    if isinstance(event, FileCreatedEvent):
-                        file = pathlib.Path(event.src_path)
-                    if str(event.src_path).endswith('.tiff') or str(event.src_path).endswith('.tif'):
-                        treeitem = QTreeWidgetItem([file.name])
-                        tw.insertTopLevelItems(0,[treeitem])
-                        if update_image:
-                            tw.itemAt(0,0).setSelected(True)
-                            #MyPlotWindow.ShowImage()
-                            # filepath = event.src_path
-                            # print(filepath)
-                            # if (filepath.endswith('.tiff') or filepath.endswith('.tif')):
-                            #     try:
-                            #         image = io.imread(filepath)  # convert to fabio?
-                            #         im = fabio.open(filepath)
-                            #         image = im.data
-                            #         plot=MyPlotWindow.getPlotWidget()
-                            #         plot.addImage(image)
-                            #     except Exception:
-                            #         pass
+                def on_any_event(self, event):
+                    file = pathlib.Path(event.src_path)
+                    if event.event_type=='created':
+                        if str(event.src_path).endswith('.tiff') or str(event.src_path).endswith('.tif'):
+                            treeitem = QTreeWidgetItem([file.name])
+                            tw.insertTopLevelItems(0,[treeitem])
+                            if update_image:
+                                tw.itemAt(0,0).setSelected(True)
+                                filepath = file
+                                if (str(filepath).endswith('.tiff') or str(filepath).endswith('.tif')):
+                                    try:
+                                        im = fabio.open(str(filepath))
+                                        image = im.data
+                                        print(image)
+                                        plot=MyPlotWindow.getPlotWidget()
+                                        plot.addImage(image, resetzoom=True)
+                                    except Exception:
+                                        logging.error('Something went wrong with loading the image')
+
 
 
                 def on_deleted(self,event):
                     pass
 
-                def on_modified(self, event):
-                    pass
+                #def on_modified(self, event):
+                #    pass
 
             event_handler = MonitorFolder()
             observer = Observer()
