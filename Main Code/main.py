@@ -17,10 +17,12 @@ from integration_methods import full_integration,send_to_integration,convert_rad
 import logging
 logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 import time
+import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler,FileCreatedEvent
 from silx.gui.qt import QTreeWidgetItem
 import pathlib
+from silx.gui import colors
 
 
 class MyPlotWindow(qt.QMainWindow):
@@ -406,6 +408,8 @@ class MyPlotWindow(qt.QMainWindow):
             self.update_image_check_box.setEnabled(True)
             tw=self.tw
             update_image=self.update_image_check_box
+            plot=self.getPlotWidget()
+            imagepath=self.imagepath
             class MonitorFolder(FileSystemEventHandler):
                 def on_any_event(self, event):
                     file = pathlib.Path(event.src_path)
@@ -413,23 +417,28 @@ class MyPlotWindow(qt.QMainWindow):
                         if str(event.src_path).endswith('.tiff') or str(event.src_path).endswith('.tif'):
                             treeitem = QTreeWidgetItem([file.name])
                             tw.insertTopLevelItems(0,[treeitem])
-                            if update_image:
-                                tw.itemAt(0,0).setSelected(True)
-                                filepath = file
-                                if (str(filepath).endswith('.tiff') or str(filepath).endswith('.tif')):
-                                    try:
-                                        im = fabio.open(str(filepath))
-                                        image = im.data
-                                        print(image)
-                                        plot=MyPlotWindow.getPlotWidget()
-                                        plot.addImage(image, resetzoom=True)
-                                    except Exception:
-                                        logging.error('Something went wrong with loading the image')
+                            filename = file.name
+                            filepath = imagepath + '/' + filename
+                            if update_image and (str(filepath).endswith('.tiff') or str(filepath).endswith('.tif')):
+                                try:
+                                    time.sleep(1)
+                                    im = fabio.open(filepath)
+                                    image = im.data
+                                    plot.clear()
+                                    plot.getDefaultColormap().setName('jet')
+                                    cm = colors.Colormap(name='jet', normalization='log')
+                                    plot.setDefaultColormap(cm)
+                                    plot.setYAxisLogarithmic(False)
+                                    plot.setKeepDataAspectRatio(True)
+                                    plot.addImage(image)
+                                    plot.resetZoom()
+                                    plot.getZoomOutAction().trigger()
+                                    plot.getZoomInAction().trigger()
+                                except Exception as e:
+                                    logging.error(f'Something went wrong with loading the image {str(e)}')
 
-
-
-                def on_deleted(self,event):
-                    pass
+                #def on_deleted(self,event):
+                #    pass
 
                 #def on_modified(self, event):
                 #    pass
