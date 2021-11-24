@@ -455,7 +455,7 @@ class MyPlotWindow(qt.QMainWindow):
             #observer.stop()
 
     def InitiateCalibration(self):
-        subprocess.run(["pyFAI-calib2"])
+        subprocess.Popen(["pyFAI-calib2"])
 
     def Integrate_selected(self):
         tw=self.tw
