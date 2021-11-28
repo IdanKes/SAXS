@@ -121,7 +121,7 @@ class MyPlotWindow(qt.QMainWindow):
         button.clicked.connect(self.open_directory_wrap)
         layout.addWidget(button)
         tw=qt.QTreeWidget(self)
-        layout.addWidget(tw,1)
+        layout.addWidget(tw,stretch=1)
         self.tw=tw
         tw.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         tw.setHeaderHidden(True)
@@ -133,7 +133,7 @@ class MyPlotWindow(qt.QMainWindow):
         track_check_box.setEnabled(False)
         self.track_check_box = track_check_box
         update_image_check_box = qt.QCheckBox(self)
-        update_image_check_box.setText('Show last created image')
+        update_image_check_box.setText('Show Last Created Image')
         update_image_check_box.setEnabled(False)
         self.update_image_check_box=update_image_check_box
         check_box_group = qt.QGroupBox()
@@ -248,9 +248,17 @@ class MyPlotWindow(qt.QMainWindow):
         tools1d=qt.QLabel('1d Tools')
         tools1d.setStyleSheet("border: 1px solid black;")
         layout3.addWidget(tools1d)
+        remove_selected_button = qt.QPushButton('Remove Selected', self)
+        clear_all_button = qt.QPushButton('Clear all', self)
+        lw_options_group = qt.QGroupBox()
+        lw_sublayout = qt.QFormLayout(lw_options_group)
         subtracttbut=qt.QPushButton('subtract',self)
-        layout3.addWidget(subtracttbut)
+        lw_sublayout.addRow(remove_selected_button, clear_all_button)
+        lw_sublayout.addRow(subtracttbut)
+        layout3.addWidget(lw_options_group)
         subtracttbut.clicked.connect(self.subtract_curves_wrap)
+        clear_all_button.clicked.connect(self.clear_lw)
+        remove_selected_button.clicked.connect(self.remove_selected_from_lw)
 
         #Loaded Directory name
         frame = qt.QLabel(self)
@@ -544,6 +552,17 @@ class MyPlotWindow(qt.QMainWindow):
 
     def save_csv_wrap(self):
         save_csv(self)
+
+    def remove_selected_from_lw(self):
+        lw=self.loadedlistwidget
+        selected = lw.selectedItems()
+        print(selected)
+        for item in selected:
+            lw.takeItem(lw.row(item))
+
+    def clear_lw(self):
+        lw=self.loadedlistwidget
+        lw.clear()
 
 def main():
     from styling import return_style
